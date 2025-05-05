@@ -1,12 +1,18 @@
-tree
+€•A      Œlightgbm.sklearn”Œ
+LGBMRegressor”“”)”}”(Œ
+boosting_type”Œgbdt”Œ	objective”NŒ
+num_leaves”KSŒ	max_depth”KŒ
+learning_rate”G?~é«HŒn_estimators”M]Œsubsample_for_bin”J@
+ Œmin_split_gain”G        Œmin_child_weight”G?PbMÒñ©üŒmin_child_samples”KŒ	subsample”G?ð      Œsubsample_freq”K Œcolsample_bytree”G?ð      Œ	reg_alpha”G        Œ
+reg_lambda”G        Œrandom_state”NŒn_jobs”NŒimportance_type”Œsplit”Œ_Booster”Œlightgbm.basic”Œ Booster”“”)”}”(Œ _handle”X*  tree
 version=v4
 num_class=1
 num_tree_per_iteration=1
 label_index=0
-max_feature_idx=4
+max_feature_idx=7
 objective=regression
-feature_names=Column_0 Column_1 Column_2 Column_3 Column_4
-feature_infos=none none none none none
+feature_names=Column_0 Column_1 Column_2 Column_3 Column_4 Column_5 Column_6 Column_7
+feature_infos=none none none none none none none none
 tree_sizes=238
 
 Tree=0
@@ -41,34 +47,34 @@ parameters:
 [data_sample_strategy: bagging]
 [data: ]
 [valid: ]
-[num_iterations: 100]
-[learning_rate: 0.1]
-[num_leaves: 31]
+[num_iterations: 349]
+[learning_rate: 0.00735179]
+[num_leaves: 83]
 [num_threads: 1]
-[seed: 42]
+[seed: 0]
 [deterministic: 0]
 [force_col_wise: 0]
 [force_row_wise: 0]
 [histogram_pool_size: -1]
-[max_depth: -1]
-[min_data_in_leaf: 20]
+[max_depth: 3]
+[min_data_in_leaf: 55]
 [min_sum_hessian_in_leaf: 0.001]
 [bagging_fraction: 1]
 [pos_bagging_fraction: 1]
 [neg_bagging_fraction: 1]
 [bagging_freq: 0]
-[bagging_seed: 400]
-[feature_fraction: 1]
+[bagging_seed: 3]
+[feature_fraction: 0.883125]
 [feature_fraction_bynode: 1]
-[feature_fraction_seed: 30056]
+[feature_fraction_seed: 2]
 [extra_trees: 0]
-[extra_seed: 12879]
+[extra_seed: 6]
 [early_stopping_round: 0]
 [early_stopping_min_delta: 0]
 [first_metric_only: 0]
 [max_delta_step: 0]
-[lambda_l1: 0]
-[lambda_l2: 0]
+[lambda_l1: 0.179677]
+[lambda_l2: 0.00492079]
 [linear_lambda: 0]
 [min_gain_to_split: 0]
 [drop_rate: 0.1]
@@ -76,7 +82,7 @@ parameters:
 [skip_drop: 0.5]
 [xgboost_dart_mode: 0]
 [uniform_drop: 0]
-[drop_seed: 17869]
+[drop_seed: 4]
 [top_rate: 0.2]
 [other_rate: 0.1]
 [min_data_per_group: 100]
@@ -108,7 +114,7 @@ parameters:
 [max_bin_by_feature: ]
 [min_data_in_bin: 3]
 [bin_construct_sample_cnt: 200000]
-[data_random_seed: 175]
+[data_random_seed: 1]
 [is_enable_sparse: 1]
 [enable_bundle: 1]
 [use_missing: 1]
@@ -125,7 +131,7 @@ parameters:
 [forcedbins_filename: ]
 [precise_float_parser: 0]
 [parser_config_file: ]
-[objective_seed: 16083]
+[objective_seed: 5]
 [num_class: 1]
 [is_unbalance: 0]
 [scale_pos_weight: 1]
@@ -156,3 +162,15 @@ parameters:
 end of parameters
 
 pandas_categorical:null
+”Œ_network”‰Œ_Booster__need_reload_eval_info”‰Œ_train_data_name”Œtraining”Œ_Booster__set_objective_to_none”‰Œbest_iteration”K Œ
+best_score”Œcollections”Œdefaultdict”“”h(ŒOrderedDict”“”…”R”Œname_valid_sets”]”Œ_Booster__num_dataset”K Œ_Booster__init_predictor”NŒ_Booster__num_class”KŒ_Booster__inner_predict_buffer”]”Œ_Booster__is_predicted_cur_iter”]”Œ_Booster__num_inner_eval”KŒ_Booster__name_inner_eval”]”Œl2”aŒ"_Booster__higher_better_inner_eval”]”‰aŒpandas_categorical”NŒtrain_set_version”KŒparams”}”(hhhG?ð      h
+G?~é«Hh	KhKhG?PbMÒñ©üh
+G        hKShNhG        hG        hG?ð      hJ@
+ hK Œmin_data_in_leaf”K7Œ	lambda_l1”G?Æÿ¨ÛìuóŒ	lambda_l2”G?t'Ñ¡ Œfeature_fraction”G?ìBŽ{›(h Œ
+regression”Œmetric”]”hFaŒnum_threads”KŒnum_iterations”M]uubŒ
+_evals_result”}”Œ_best_score”h.Œ_best_iteration”K Œ
+_other_params”}”(hBK7hCG?Æÿ¨ÛìuóhDG?t'Ñ¡ hEG?ìBŽ{›(uŒ
+_objective”hFŒclass_weight”NŒ
+_class_weight”NŒ
+_class_map”NŒ_n_features”KŒ_n_features_in”KŒ_classes”NŒ
+_n_classes”JÿÿÿÿhBK7hCG?Æÿ¨ÛìuóhDG?t'Ñ¡ hEG?ìBŽ{›(Œ fitted_”ˆub.
