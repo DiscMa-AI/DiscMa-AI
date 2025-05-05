@@ -7,14 +7,6 @@ import textstat
 import streamlit as st
 import openai
 
-# Streamlit Sidebar Settings
-with st.sidebar:
-    st.sidebar.title("⚙️ Settings")
-    use_gpt4 = st.sidebar.toggle("Use GPT-4", value=False)
-    selected_model = "gpt-4" if use_gpt4 else "gpt-3.5-turbo"
-
-openai.api_key = st.secrets["OPENAI_API_KEY"]
-
 # ---- Load Trained Model and Scaler ----
 @st.cache_resource
 def load_model_and_scaler():
@@ -96,44 +88,67 @@ def generate_feedback_from_gpt(question_text, difficulty_score, model="gpt-3.5-t
         st.error(f"OpenAI API error (feedback): {e}")
         return None
 
-# Streamlit Interface
+# ---- Feature Heatmap ----
+def generate_feature_heatmap(questions):
+    feature_data = []
+    question_labels = []
+
+    for idx, q in enumerate(questions):
+        features = extract_features(q)
+        feature_data.append(features)
+        label = f"Q{idx+1}" if len(q) > 30 else q
+        question_labels.append(label[:30] + '...' if len(label) > 30 else label)
+
+    feature_df = pd.DataFrame(feature_data, index=question_labels)
+
+    st.subheader("🔍 Feature Heatmap of Questions")
+    fig, ax = plt.subplots(figsize=(10, max(2, len(questions)*0.5)))
+    sns.heatmap(feature_df, annot=True, cmap="viridis", fmt="d", cbar_kws={'label': 'Value'}, ax=ax)
+    ax.set_xlabel("Features")
+    ax.set_ylabel("Question")
+    st.pyplot(fig)
+
+# ---- Streamlit App ----
 def main():
-    st.title('Question Difficulty Prediction')
+    st.title('📊 Discrete Math Question Difficulty Predictor')
 
     model, scaler = load_model_and_scaler()
 
-    st.subheader("Enter a Question Text to Predict Difficulty")
-
+    st.subheader("🔤 Enter a Question to Predict Difficulty")
     question_text = st.text_area("Enter your question here:")
 
     if question_text:
         prediction = predict_difficulty(model, scaler, question_text)
-        st.write(f"Predicted Difficulty: {prediction:.2f}")
-        st.subheader("Generate Similar Questions")
+        st.write(f"Predicted Difficulty: **{prediction:.2f}**")
+
+        generate_feature_heatmap([question_text])
+
+        st.subheader("🤖 Generate Similar Questions")
         if st.button("Generate Similar Questions using OpenAI"):
             with st.spinner("Generating questions..."):
                 generated_questions = generate_similar_questions(
-                base_question=question_text,
-                difficulty=prediction,
-                num_questions=3,
-                model=selected_model
-            )
+                    base_question=question_text,
+                    difficulty=prediction,
+                    num_questions=3,
+                    model=selected_model
+                )
             if generated_questions:
                 st.success("Similar questions generated:")
-                for i, q in enumerate(generated_questions, 1):
-                    st.markdown(f"{q}")
-                    
+                for q in generated_questions:
+                    st.markdown(f"- {q}")
+
         feedback = generate_feedback_from_gpt(question_text, prediction, model=selected_model)
         if feedback:
             st.info(f"💡 GPT Suggestion:\n\n{feedback}")
 
-    
+    st.divider()
 
+    st.subheader("📁 Or Upload a CSV of Questions")
     uploaded_file = st.file_uploader("Upload Question Data (CSV)", type=["csv"])
 
     if uploaded_file is not None:
         df_questions = pd.read_csv(uploaded_file)
-        st.write("Uploaded Questions:")
+        st.write("Uploaded Questions Preview:")
         st.write(df_questions.head())
 
         predictions = []
@@ -142,9 +157,11 @@ def main():
             predictions.append(prediction)
 
         df_questions['Predicted Difficulty'] = predictions
-        st.write("Questions with Predicted Difficulty:")
+        st.write("📊 Questions with Predicted Difficulty:")
         st.write(df_questions)
 
-# ---- Run Streamlit App ----
+        generate_feature_heatmap(df_questions.iloc[:, 0].tolist())
+
+# ---- Run the App ----
 if __name__ == "__main__":
     main()
