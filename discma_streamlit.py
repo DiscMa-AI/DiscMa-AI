@@ -65,7 +65,38 @@ def generate_similar_questions(base_question, difficulty, num_questions=3, model
         st.error(f"OpenAI API error: {e}")
         return []
 
-# ---- Streamlit Interface ----
+def generate_feedback_from_gpt(question_text, difficulty_score, model="gpt-3.5-turbo"):
+    client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+
+
+    if difficulty_score < 4:
+        level = "too easy"
+    elif difficulty_score > 7:
+        level = "too difficult"
+    else:
+        level = "moderately difficult"
+
+    prompt = (
+        f"A discrete math question was submitted:\n"
+        f"\"{question_text}\"\n\n"
+        f"The predicted difficulty is {difficulty_score:.2f}, which is considered {level}.\n"
+        f"Give a short and constructive suggestion for how to improve or adjust the question accordingly. "
+        f"The suggestion should be clear, helpful, and ideally actionable."
+    )
+
+    try:
+        response = client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.7,
+            max_tokens=150,
+        )
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        st.error(f"OpenAI API error (feedback): {e}")
+        return None
+
+# Streamlit Interface
 def main():
     st.title('Question Difficulty Prediction')
 
@@ -91,6 +122,10 @@ def main():
                 st.success("Similar questions generated:")
                 for i, q in enumerate(generated_questions, 1):
                     st.markdown(f"{q}")
+                    
+        feedback = generate_feedback_from_gpt(question_text, prediction, model=selected_model)
+        if feedback:
+            st.info(f"💡 GPT Suggestion:\n\n{feedback}")
 
     
 
