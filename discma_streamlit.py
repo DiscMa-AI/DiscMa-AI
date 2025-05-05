@@ -1,3 +1,4 @@
+# Enhanced Streamlit App with Advanced Features
 import pandas as pd
 import numpy as np
 import lightgbm as lgb
@@ -9,28 +10,18 @@ import matplotlib.pyplot as plt
 import openai
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.preprocessing import normalize
-
 import json
 
 @st.cache_resource
 def load_model_and_scaler():
-    model_file = "models/discma1.txt"
-    
-    # Check if the model file exists
-    if not os.path.exists(model_file):
-        st.error(f"Model file not found at {model_file}")
-        return None, None
-    
-    model = lgb.Booster(model_file=model_file)
-    scaler = joblib.load('model/scaler1.pkl')
+    model = lgb.Booster(model_file='model/discma.txt')
+    scaler = joblib.load('model/scaler.pkl')
     return model, scaler
 
 # Load embedding examples (precomputed vectors of in-scope questions)
 def load_embedding_examples():
     with open("model/sequence_examples_embeddings.json") as f:
-        raw = json.load(f)
-        embeddings = [item["embedding"] for item in raw["data"]]
-        return {"embeddings": embeddings}
+        return json.load(f)
 
 # Extract features
 def extract_features(question_text):
@@ -199,5 +190,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
