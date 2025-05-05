@@ -16,7 +16,7 @@ def load_model_and_scaler():
     scaler = joblib.load('model/scaler.pkl')
     return model, scaler
 
-# ---- Custom Feature Extractor (exact match with training) ----
+# ---- Custom Feature Extractor ----
 def extract_features(question_text):
     features = {}
     if isinstance(question_text, str):
@@ -35,16 +35,18 @@ def predict_difficulty(model, scaler, question_text):
     X_new = pd.DataFrame([features])
     X_new_scaled = scaler.transform(X_new)
     prediction = model.predict(X_new_scaled)
-    return prediction[0]
+    return prediction[0], features
 
-def generate_similar_questions(base_question, difficulty, num_questions=3, model="gpt-3.5-turbo"):
+# ---- Explanation Generation ----
+def generate_explanation(question_text, difficulty_score, features, model="gpt-3.5-turbo"):
     client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
     prompt = (
-        f"Generate {num_questions} discrete math questions similar to the following, "
-        f"with a difficulty level of approximately {difficulty:.2f}:\n\n"
-        f"Question: {base_question}\n\n"
-        "Similar Questions:"
+        f"Question: \"{question_text}\"\n"
+        f"Predicted Difficulty: {difficulty_score:.2f}\n"
+        f"Features: {features}\n"
+        f"Explain why this question is considered to have this difficulty level.\n"
+        f"Base your explanation on the feature values."
     )
 
     try:
@@ -52,42 +54,46 @@ def generate_similar_questions(base_question, difficulty, num_questions=3, model
             model=model,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.7,
-            max_tokens=500,
-        )
-        return response.choices[0].message.content.strip().split("\n")
-    except Exception as e:
-        st.error(f"OpenAI API error: {e}")
-        return []
-
-def generate_feedback_from_gpt(question_text, difficulty_score, model="gpt-3.5-turbo"):
-    client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-
-    if difficulty_score < 4:
-        level = "too easy"
-    elif difficulty_score > 7:
-        level = "too difficult"
-    else:
-        level = "moderately difficult"
-
-    prompt = (
-        f"A discrete math question was submitted:\n"
-        f"\"{question_text}\"\n\n"
-        f"The predicted difficulty is {difficulty_score:.2f}, which is considered {level}.\n"
-        f"Give a short and constructive suggestion for how to improve or adjust the question accordingly. "
-        f"The suggestion should be clear, helpful, and ideally actionable."
-    )
-
-    try:
-        response = client.chat.completions.create(
-            model=model,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.7,
-            max_tokens=150,
+            max_tokens=200,
         )
         return response.choices[0].message.content.strip()
     except Exception as e:
-        st.error(f"OpenAI API error (feedback): {e}")
-        return None
+        st.error(f"OpenAI API error (explanation): {e}")
+        return "Explanation could not be generated."
+
+# ---- Question Generation ----
+def generate_custom_questions(base_question, difficulty, difficulty_type="similar", num_questions=3, model="gpt-3.5-turbo"):
+    client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+
+    adjustment = {
+        "similar": f"with a difficulty level of approximately {difficulty:.2f}",
+        "easier": f"that are slightly easier than difficulty {difficulty:.2f}",
+        "harder": f"that are slightly harder than difficulty {difficulty:.2f}"
+    }
+
+    explanation_note = {
+        "similar": "These are similar in structure and complexity.",
+        "easier": "These are simpler in structure, shorter, or more straightforward.",
+        "harder": "These are more complex, longer, or require deeper analysis."
+    }
+
+    prompt = (
+        f"Generate {num_questions} discrete math questions based on the following, {adjustment[difficulty_type]}:\n"
+        f"Question: {base_question}\n\n"
+        f"Questions with brief notes explaining why each is {difficulty_type}:\n"
+    )
+
+    try:
+        response = client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.7,
+            max_tokens=700,
+        )
+        return explanation_note[difficulty_type], response.choices[0].message.content.strip().split("\n")
+    except Exception as e:
+        st.error(f"OpenAI API error: {e}")
+        return explanation_note[difficulty_type], []
 
 # ---- Feature Heatmap ----
 def generate_feature_heatmap(questions):
@@ -119,49 +125,33 @@ def main():
     question_text = st.text_area("Enter your question here:")
 
     if question_text:
-        prediction = predict_difficulty(model, scaler, question_text)
-        st.write(f"Predicted Difficulty: **{prediction:.2f}**", unsafe_allow_html=True)
+        prediction, features = predict_difficulty(model, scaler, question_text)
+        st.markdown(f"**Predicted Difficulty:** <span style='color:blue; font-weight:bold;'>{prediction:.2f}</span>", unsafe_allow_html=True)
 
-        features = extract_features(question_text)
+        st.subheader("📌 Extracted Features")
         feature_df = pd.DataFrame([features])
-        st.write("### Extracted Features:")
-        st.write(feature_df)
+        st.table(feature_df)
 
-        st.subheader("🔍 Explanation of Predicted Difficulty")
-        feedback = generate_feedback_from_gpt(question_text, prediction)
-        if feedback:
-            st.info(f"💡Suggestion:\n\n{feedback}")
+        explanation = generate_explanation(question_text, prediction, features)
+        st.subheader("🧠 Explanation")
+        st.write(explanation)
 
         generate_feature_heatmap([question_text])
 
-        st.subheader("🤖 Generate Similar, Easier, or Harder Questions")
-        option = st.radio("Select the type of questions to generate", ("Similar", "Easier", "Harder"))
+        st.subheader("🤖 Generate Questions Based on This")
 
-        if st.button("Generate Questions"):
-            with st.spinner("Generating questions..."):
-                if option == "Similar":
-                    generated_questions = generate_similar_questions(
+        for diff_type in ["similar", "easier", "harder"]:
+            st.markdown(f"### {diff_type.capitalize()} Questions")
+            if st.button(f"Generate {diff_type} questions"):
+                with st.spinner(f"Generating {diff_type} questions..."):
+                    note, generated_questions = generate_custom_questions(
                         base_question=question_text,
                         difficulty=prediction,
-                        num_questions=3,
+                        difficulty_type=diff_type,
+                        num_questions=3
                     )
-                    st.success("Similar questions generated:")
-                elif option == "Easier":
-                    generated_questions = generate_similar_questions(
-                        base_question=question_text,
-                        difficulty=prediction - 1,
-                        num_questions=3,
-                    )
-                    st.success("Easier questions generated:")
-                elif option == "Harder":
-                    generated_questions = generate_similar_questions(
-                        base_question=question_text,
-                        difficulty=prediction + 1,
-                        num_questions=3,
-                    )
-                    st.success("Harder questions generated:")
-
                 if generated_questions:
+                    st.success(note)
                     for q in generated_questions:
                         st.markdown(f"- {q}")
 
@@ -175,24 +165,16 @@ def main():
         st.write("Uploaded Questions Preview:")
         st.write(df_questions.head())
 
-        generate_button = st.button("Generate Difficulty and Explanations for All Questions")
+        predictions = []
+        for q_text in df_questions.iloc[:, 0]:
+            pred, _ = predict_difficulty(model, scaler, q_text)
+            predictions.append(pred)
 
-        if generate_button:
-            predictions = []
-            explanations = []
+        df_questions['Predicted Difficulty'] = predictions
+        st.write("📊 Questions with Predicted Difficulty:")
+        st.write(df_questions)
 
-            for q_text in df_questions.iloc[:, 0]:
-                prediction = predict_difficulty(model, scaler, q_text)
-                explanation = generate_feedback_from_gpt(q_text, prediction)
-                predictions.append(prediction)
-                explanations.append(explanation)
-
-            df_questions['Predicted Difficulty'] = predictions
-            df_questions['Explanation'] = explanations
-            st.write("📊 Questions with Predicted Difficulty and Explanations:")
-            st.write(df_questions)
-
-            generate_feature_heatmap(df_questions.iloc[:, 0].tolist())
+        generate_feature_heatmap(df_questions.iloc[:, 0].tolist())
 
 # ---- Run the App ----
 if __name__ == "__main__":
