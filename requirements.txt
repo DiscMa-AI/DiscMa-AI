@@ -8,5 +8,4 @@ joblib
 openai
 matplotlib
 seaborn
-textstat
 
