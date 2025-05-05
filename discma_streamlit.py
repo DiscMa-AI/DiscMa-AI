@@ -44,14 +44,17 @@ def predict_difficulty(model, scaler, question_text):
     return prediction[0]
 
 def generate_similar_questions(base_question, difficulty, num_questions=3, model="gpt-3.5-turbo"):
+    client = openai.OpenAI(api_key=st.secrets["openai_api_key"])
+
     prompt = (
         f"Generate {num_questions} discrete math questions similar to the following, "
         f"with a difficulty level of approximately {difficulty:.2f}:\n\n"
         f"Question: {base_question}\n\n"
         "Similar Questions:"
     )
+
     try:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model=model,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.7,
