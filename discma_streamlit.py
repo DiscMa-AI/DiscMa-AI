@@ -137,7 +137,7 @@ def main():
             if generated_questions:
                 st.success("Similar questions generated:")
                 for q in generated_questions:
-                    st.markdown(f"- {q}")
+                    st.markdown(f" {q}")
 
         feedback = generate_feedback_from_gpt(question_text, prediction)
         if feedback:
