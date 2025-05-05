@@ -56,10 +56,8 @@ def main():
     if question_text:
         prediction = predict_difficulty(model, scaler, question_text)
         st.write(f"Predicted Difficulty: {prediction:.2f}")
-        
         st.subheader("Generate Similar Questions")
-
-    if st.button("Generate Similar Questions using OpenAI"):
+        if st.button("Generate Similar Questions using OpenAI"):
         with st.spinner("Generating questions..."):
             generated_questions = generate_similar_questions(
                 base_question=question_text,
@@ -71,6 +69,8 @@ def main():
                 st.success("Similar questions generated:")
                 for i, q in enumerate(generated_questions, 1):
                     st.markdown(f"**{i}.** {q}")
+
+    
 
     uploaded_file = st.file_uploader("Upload Question Data (CSV)", type=["csv"])
 
