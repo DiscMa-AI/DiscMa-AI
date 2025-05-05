@@ -1,4 +1,3 @@
-# Enhanced Streamlit App with Advanced Features
 import pandas as pd
 import numpy as np
 import lightgbm as lgb
@@ -14,8 +13,8 @@ import json
 
 @st.cache_resource
 def load_model_and_scaler():
-    model = lgb.Booster(model_file='model/discma1.txt')
-    scaler = joblib.load('model/scaler1.pkl')
+    model = lgb.Booster(model_file='model/discma.txt')
+    scaler = joblib.load('model/scaler.pkl')
     return model, scaler
 
 # Load embedding examples (precomputed vectors of in-scope questions)
@@ -147,7 +146,7 @@ def main():
     if question_text:
         in_scope = is_in_scope(question_text, emb_examples)
         prediction, features = predict_difficulty(model, scaler, question_text)
-        st.markdown(f"**Predicted Difficulty:** `{prediction:.2f}`")
+        st.markdown(f"**Predicted Difficulty:** {prediction:.2f}")
         st.subheader("📌 Features")
         st.table(pd.DataFrame([features]))
 
@@ -190,3 +189,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
