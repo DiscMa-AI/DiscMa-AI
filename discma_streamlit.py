@@ -59,7 +59,7 @@ def main():
         st.subheader("Generate Similar Questions")
         if st.button("Generate Similar Questions using OpenAI"):
             with st.spinner("Generating questions..."):
-            generated_questions = generate_similar_questions(
+                generated_questions = generate_similar_questions(
                 base_question=question_text,
                 difficulty=prediction,
                 num_questions=3,
