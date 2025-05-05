@@ -6,7 +6,8 @@ import re
 import textstat
 import streamlit as st
 import openai
-
+import seaborn as sns
+import matplotlib.pyplot as plt
 # ---- Load Trained Model and Scaler ----
 @st.cache_resource
 def load_model_and_scaler():
