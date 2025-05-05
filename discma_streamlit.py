@@ -1,10 +1,3 @@
-# Enhanced Streamlit App with Advanced Features
-import pandas as pd
-import numpy as np
-import lightgbm as lgb
-import joblib
-import re
-import streamlit as st
 import seaborn as sns
 import matplotlib.pyplot as plt
 import openai
@@ -18,7 +11,10 @@ def load_model_and_scaler():
     scaler = joblib.load('model/scaler1.pkl')
     return model, scaler
 
-
+# Load embedding examples (precomputed vectors of in-scope questions)
+def load_embedding_examples():
+    with open("model/sequence_examples_embeddings.json") as f:
+        return json.load(f)
 
 # Extract features
 def extract_features(question_text):
@@ -136,6 +132,7 @@ def generate_feature_heatmap(questions):
 def main():
     st.title("📊 Discrete Math Question Difficulty Predictor")
     model, scaler = load_model_and_scaler()
+    emb_examples = load_embedding_examples()
 
     st.subheader("🔤 Enter a Question")
     question_text = st.text_area("Enter your question:")
@@ -143,7 +140,7 @@ def main():
     if question_text:
         in_scope = is_in_scope(question_text, emb_examples)
         prediction, features = predict_difficulty(model, scaler, question_text)
-        st.markdown(f"**Predicted Difficulty:** `{prediction:.2f}`")
+        st.markdown(f"**Predicted Difficulty:** {prediction:.2f}")
         st.subheader("📌 Features")
         st.table(pd.DataFrame([features]))
 
