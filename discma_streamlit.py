@@ -1,9 +1,3 @@
-import pandas as pd
-import numpy as np
-import lightgbm as lgb
-import joblib
-import re
-import streamlit as st
 import seaborn as sns
 import matplotlib.pyplot as plt
 import openai
@@ -16,6 +10,11 @@ def load_model_and_scaler():
     model = lgb.Booster(model_file='model/discma1.txt')
     scaler = joblib.load('model/scaler1.pkl')
     return model, scaler
+
+# Load embedding examples (precomputed vectors of in-scope questions)
+def load_embedding_examples():
+    with open("model/sequence_examples_embeddings.json") as f:
+        return json.load(f)
 
 # Extract features
 def extract_features(question_text):
@@ -58,6 +57,14 @@ def get_embedding(text):
     except Exception as e:
         st.warning(f"Embedding error: {e}")
         return np.zeros(1536)  # default size for fallback
+
+# Check if question is in-scope
+def is_in_scope(question_text, embedding_examples, threshold=0.8):
+    emb = get_embedding(question_text)
+    emb = normalize([emb])[0]
+    example_embeddings = np.array(embedding_examples["embeddings"])
+    sims = cosine_similarity([emb], example_embeddings)[0]
+    return max(sims) >= threshold
 
 # Predict difficulty
 def predict_difficulty(model, scaler, question_text):
@@ -125,13 +132,13 @@ def generate_feature_heatmap(questions):
 def main():
     st.title("📊 Discrete Math Question Difficulty Predictor")
     model, scaler = load_model_and_scaler()
+    emb_examples = load_embedding_examples()
 
     st.subheader("🔤 Enter a Question")
     question_text = st.text_area("Enter your question:")
 
     if question_text:
-        # Remove is_in_scope since we no longer use embeddings
-        in_scope = True  # Or you can add custom scope logic here if needed
+        in_scope = is_in_scope(question_text, emb_examples)
         prediction, features = predict_difficulty(model, scaler, question_text)
         st.markdown(f"**Predicted Difficulty:** {prediction:.2f}")
         st.subheader("📌 Features")
@@ -162,12 +169,14 @@ def main():
         df = pd.read_csv(uploaded_file)
         st.write("Preview:", df.head())
 
-        predictions = []
+        predictions, scopes = [], []
         for q in df.iloc[:, 0]:
             pred, _ = predict_difficulty(model, scaler, q)
             predictions.append(pred)
+            scopes.append(is_in_scope(q, emb_examples))
 
         df['Predicted Difficulty'] = predictions
+        df['In Scope'] = scopes
         st.write("Processed Data:", df)
         generate_feature_heatmap(df.iloc[:, 0].tolist())
         st.download_button("📥 Download Processed CSV", df.to_csv(index=False), "processed_questions.csv")
