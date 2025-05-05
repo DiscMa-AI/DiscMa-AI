@@ -130,7 +130,7 @@ def main():
         prediction = predict_difficulty(model, scaler, question_text)
         st.write(f"Predicted Difficulty: **{prediction:.2f}**")
 
-        gexplainer = load_shap_explainer(model)
+        explainer = load_shap_explainer(model)
         explain_prediction_with_shap(model, scaler, explainer, question_text)
 
         feedback = generate_feedback_from_gpt(question_text, prediction)
