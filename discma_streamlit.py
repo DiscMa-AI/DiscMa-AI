@@ -110,9 +110,6 @@ def generate_feature_heatmap(questions):
     ax.set_ylabel("Question")
     st.pyplot(fig)
     
-    explanation = generate_plot_explanation(questions, feature_df.to_string())
-    if explanation:
-        st.info(f"📊 **Explanation of the Heatmap**:\n\n{explanation}")
 
 # ---- Streamlit App ----
 def main():
