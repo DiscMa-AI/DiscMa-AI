@@ -14,7 +14,14 @@ import json
 
 @st.cache_resource
 def load_model_and_scaler():
-    model = lgb.Booster(model_file="models/discma1.txt")  # Trained model
+    model_file = "models/discma1.txt"
+    
+    # Check if the model file exists
+    if not os.path.exists(model_file):
+        st.error(f"Model file not found at {model_file}")
+        return None, None
+    
+    model = lgb.Booster(model_file=model_file)
     scaler = joblib.load('model/scaler1.pkl')
     return model, scaler
 
