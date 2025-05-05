@@ -165,16 +165,54 @@ def main():
         st.write("Uploaded Questions Preview:")
         st.write(df_questions.head())
 
-        predictions = []
-        for q_text in df_questions.iloc[:, 0]:
-            pred, _ = predict_difficulty(model, scaler, q_text)
-            predictions.append(pred)
+        detailed_results = []
 
-        df_questions['Predicted Difficulty'] = predictions
-        st.write("📊 Questions with Predicted Difficulty:")
-        st.write(df_questions)
+        for idx, q_text in enumerate(df_questions.iloc[:, 0]):
+            if not isinstance(q_text, str) or not q_text.strip():
+                continue
 
-        generate_feature_heatmap(df_questions.iloc[:, 0].tolist())
+            st.markdown(f"---\n### Question {idx + 1}:")
+            st.markdown(f"**Text:** {q_text}")
+
+            # Predict and show features
+            prediction, features = predict_difficulty(model, scaler, q_text)
+            st.markdown(f"**Predicted Difficulty:** <span style='color:blue; font-weight:bold;'>{prediction:.2f}</span>", unsafe_allow_html=True)
+
+            feature_df = pd.DataFrame([features])
+            st.markdown("**Extracted Features:**")
+            st.table(feature_df)
+
+            # Explanation
+            explanation = generate_explanation(q_text, prediction, features)
+            st.markdown("**Explanation:**")
+            st.write(explanation)
+
+            # Question generation
+            with st.expander("🤖 Generate Questions Based on This"):
+                for diff_type in ["similar", "easier", "harder"]:
+                    if st.button(f"Generate {diff_type} questions for Q{idx + 1}", key=f"{diff_type}_{idx}"):
+                        with st.spinner(f"Generating {diff_type} questions..."):
+                            note, generated_questions = generate_custom_questions(
+                                base_question=q_text,
+                                difficulty=prediction,
+                                difficulty_type=diff_type,
+                                num_questions=3
+                            )
+                        if generated_questions:
+                            st.success(note)
+                            for q in generated_questions:
+                                st.markdown(f"- {q}")
+
+            detailed_results.append({
+                "Question": q_text,
+                "Predicted Difficulty": prediction,
+                **features
+            })
+
+        # Show heatmap
+        if detailed_results:
+            question_texts = [r["Question"] for r in detailed_results]
+            generate_feature_heatmap(question_texts)
 
 # ---- Run the App ----
 if __name__ == "__main__":
