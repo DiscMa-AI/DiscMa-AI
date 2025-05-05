@@ -43,6 +43,25 @@ def predict_difficulty(model, scaler, question_text):
     prediction = model.predict(X_new_scaled)
     return prediction[0]
 
+def generate_similar_questions(base_question, difficulty, num_questions=3, model="gpt-3.5-turbo"):
+    prompt = (
+        f"Generate {num_questions} discrete math questions similar to the following, "
+        f"with a difficulty level of approximately {difficulty:.2f}:\n\n"
+        f"Question: {base_question}\n\n"
+        "Similar Questions:"
+    )
+    try:
+        response = openai.ChatCompletion.create(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.7,
+            max_tokens=500,
+        )
+        return response.choices[0].message.content.strip().split("\n")
+    except Exception as e:
+        st.error(f"OpenAI API error: {e}")
+        return []
+
 # ---- Streamlit Interface ----
 def main():
     st.title('Question Difficulty Prediction')
