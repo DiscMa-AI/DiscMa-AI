@@ -10,8 +10,8 @@ import joblib
 # ---- Load Trained Model and Scaler ----
 @st.cache_resource
 def load_trained_model():
-    model = lgb.Booster(model_file='/model/discma.txt')  # Trained LightGBM model
-    scaler = joblib.load('/model/scaler.pkl')  # Pre-fitted StandardScaler
+    model = lgb.Booster(model_file='model/discma.txt')  # Trained LightGBM model
+    scaler = joblib.load('model/scaler.pkl')  # Pre-fitted StandardScaler
     return model, scaler
 
 # ---- Feature Extractor ----
