@@ -90,31 +90,6 @@ def generate_feedback_from_gpt(question_text, difficulty_score, model="gpt-3.5-t
         return None
 
 # ---- Feature Heatmap ----
-def generate_plot_explanation(questions, feature_data):
-    # Prepare the prompt for GPT
-    user_message = (
-        f"The following data represents a heatmap of features for discrete math questions. "
-        f"Each row corresponds to a question, and each column corresponds to a specific feature like the number of words, "
-        f"the number of numbers, the number of math symbols, and others.\n\n"
-        f"Data:\n{feature_data}\n\n"
-        f"Provide a brief explanation of the plot's key takeaways and what the heatmap represents."
-    )
-
-    try:
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant that explains data visualizations."},
-                {"role": "user", "content": user_message}
-            ],
-            temperature=0.7,
-            max_tokens=200,
-        )
-        explanation = response.choices[0].message["content"].strip()
-        return explanation
-    except Exception as e:
-        st.error(f"OpenAI API error (explanation): {e}")
-        return None
         
 def generate_feature_heatmap(questions):
     feature_data = []
