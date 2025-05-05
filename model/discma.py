@@ -10,6 +10,9 @@ import re
 import textstat
 import streamlit as st
 
+
+
+
 # ---- Load Data ----
 def load_data(question_path, rate_path):
     df_questions = pd.read_csv(question_path)
