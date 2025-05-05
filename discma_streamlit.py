@@ -138,13 +138,38 @@ def main():
         st.write(df_questions.head())
 
         predictions = []
-        for q_text in df_questions.iloc[:, 0]:
+        suggestions = []
+        similar_questions_list = []
+        with st.spinner("Processing questions..."):
+            for q_text in df_questions.iloc[:, 0]:
             prediction = predict_difficulty(model, scaler, q_text)
             predictions.append(prediction)
+            
+            feedback = generate_feedback_from_gpt(q_text, pred)
+            suggestions.append(feedback)
+
+            similar_qs = generate_similar_questions(
+                base_question=q_text,
+                difficulty=pred,
+                num_questions=2  # Reduce to 2 to prevent long output
+            )
+            similar_questions_list.append("\n".join(similar_qs))
 
         df_questions['Predicted Difficulty'] = predictions
-        st.write("📊 Questions with Predicted Difficulty:")
+        df_questions['GPT Suggestion'] = suggestions
+        df_questions['Similar Questions'] = similar_questions_list
+        
+        st.write("📊 Questions with Predicted Difficulty, Suggestions, and Similar Questions:")
         st.write(df_questions)
+        
+        # Optionally let the user download the enhanced CSV
+        csv = df_questions.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="📥 Download Results as CSV",
+            data=csv,
+            file_name='questions_with_difficulty.csv',
+            mime='text/csv',
+        )
 
 
 
