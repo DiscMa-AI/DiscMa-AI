@@ -142,18 +142,17 @@ def main():
         similar_questions_list = []
         with st.spinner("Processing questions..."):
             for q_text in df_questions.iloc[:, 0]:
-            prediction = predict_difficulty(model, scaler, q_text)
-            predictions.append(prediction)
-            
-            feedback = generate_feedback_from_gpt(q_text, pred)
-            suggestions.append(feedback)
-
-            similar_qs = generate_similar_questions(
-                base_question=q_text,
-                difficulty=pred,
-                num_questions=2  # Reduce to 2 to prevent long output
-            )
-            similar_questions_list.append("\n".join(similar_qs))
+                prediction = predict_difficulty(model, scaler, q_text)
+                predictions.append(prediction)
+                
+                feedback = generate_feedback_from_gpt(q_text, pred)
+                suggestions.append(feedback)
+                similar_qs = generate_similar_questions(
+                    base_question=q_text,
+                    difficulty=pred,
+                    num_questions=2  # Reduce to 2 to prevent long output
+                )
+                similar_questions_list.append("\n".join(similar_qs))
 
         df_questions['Predicted Difficulty'] = predictions
         df_questions['GPT Suggestion'] = suggestions
