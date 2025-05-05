@@ -1,9 +1,17 @@
+# Enhanced Streamlit App with Advanced Features
+import pandas as pd
+import numpy as np
+import lightgbm as lgb
+import joblib
+import re
+import streamlit as st
 import seaborn as sns
 import matplotlib.pyplot as plt
 import openai
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.preprocessing import normalize
 import json
+
 
 @st.cache_resource
 def load_model_and_scaler():
