@@ -149,7 +149,7 @@ def main():
                 suggestions.append(feedback)
                 similar_qs = generate_similar_questions(
                     base_question=q_text,
-                    difficulty=pred,
+                    difficulty=prediction,
                     num_questions=2  # Reduce to 2 to prevent long output
                 )
                 similar_questions_list.append("\n".join(similar_qs))
