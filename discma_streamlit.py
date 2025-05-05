@@ -125,7 +125,7 @@ def main():
         generate_feature_heatmap([question_text])
 
         st.subheader("🤖 Generate Similar Questions")
-        if st.button("Generate Similar Questions using OpenAI"):
+        if st.button("Generate"):
             with st.spinner("Generating questions..."):
                 generated_questions = generate_similar_questions(
                     base_question=question_text,
@@ -139,7 +139,7 @@ def main():
 
         feedback = generate_feedback_from_gpt(question_text, prediction)
         if feedback:
-            st.info(f"💡 GPT Suggestion:\n\n{feedback}")
+            st.info(f"💡Suggestion:\n\n{feedback}")
 
     st.divider()
 
