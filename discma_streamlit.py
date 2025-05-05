@@ -90,7 +90,7 @@ def main():
             if generated_questions:
                 st.success("Similar questions generated:")
                 for i, q in enumerate(generated_questions, 1):
-                    st.markdown(f"**.** {q}")
+                    st.markdown(f"**** {q}")
 
     
 
