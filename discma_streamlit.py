@@ -16,10 +16,6 @@ def load_model_and_scaler():
     scaler = joblib.load('model/scaler.pkl')
     return model, scaler
 
-def load_shap_explainer(model):
-    explainer = shap.TreeExplainer(model)
-    return explainer
-    
 # ---- Custom Feature Extractor (exact match with training) ----
 def extract_features(question_text):
     features = {}
@@ -39,8 +35,39 @@ def predict_difficulty(model, scaler, question_text):
     X_new = pd.DataFrame([features])
     X_new_scaled = scaler.transform(X_new)
     prediction = model.predict(X_new_scaled)
-    return prediction[0]
+    return prediction[0], features
 
+# ---- GPT Feedback Generator ----
+def generate_feedback_from_gpt(question_text, difficulty_score, model="gpt-3.5-turbo"):
+    client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+
+    if difficulty_score < 4:
+        level = "too easy"
+    elif difficulty_score > 7:
+        level = "too difficult"
+    else:
+        level = "moderately difficult"
+
+    prompt = (
+        f"A discrete math question was submitted:\n"
+        f"\"{question_text}\"\n\n"
+        f"The predicted difficulty is {difficulty_score:.2f}, which is considered {level}.\n"
+        f"Give a short and constructive suggestion for how to improve or adjust the question accordingly."
+    )
+
+    try:
+        response = client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.7,
+            max_tokens=150,
+        )
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        st.error(f"OpenAI API error (feedback): {e}")
+        return None
+
+# ---- GPT Question Generator ----
 def generate_similar_questions(base_question, difficulty, num_questions=3, model="gpt-3.5-turbo"):
     client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
@@ -63,37 +90,25 @@ def generate_similar_questions(base_question, difficulty, num_questions=3, model
         st.error(f"OpenAI API error: {e}")
         return []
 
-def generate_feedback_from_gpt(question_text, difficulty_score, model="gpt-3.5-turbo"):
-    client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+# ---- Feature Heatmap ----
+def generate_feature_heatmap(questions):
+    feature_data = []
+    question_labels = []
 
+    for idx, q in enumerate(questions):
+        features = extract_features(q)
+        feature_data.append(features)
+        label = f"Q{idx+1}" if len(q) > 30 else q
+        question_labels.append(label[:30] + '...' if len(label) > 30 else label)
 
-    if difficulty_score < 4:
-        level = "too easy"
-    elif difficulty_score > 7:
-        level = "too difficult"
-    else:
-        level = "moderately difficult"
+    feature_df = pd.DataFrame(feature_data, index=question_labels)
 
-    prompt = (
-        f"A discrete math question was submitted:\n"
-        f"\"{question_text}\"\n\n"
-        f"The predicted difficulty is {difficulty_score:.2f}, which is considered {level}.\n"
-        f"Give a short and constructive suggestion for how to improve or adjust the question accordingly. "
-        f"The suggestion should be clear, helpful, and ideally actionable."
-    )
-
-    try:
-        response = client.chat.completions.create(
-            model=model,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.7,
-            max_tokens=150,
-        )
-        return response.choices[0].message.content.strip()
-    except Exception as e:
-        st.error(f"OpenAI API error (feedback): {e}")
-        return None
-    
+    st.subheader("🔍 Feature Heatmap of Questions")
+    fig, ax = plt.subplots(figsize=(10, max(2, len(questions)*0.5)))
+    sns.heatmap(feature_df, annot=True, cmap="viridis", fmt="d", cbar_kws={'label': 'Value'}, ax=ax)
+    ax.set_xlabel("Features")
+    ax.set_ylabel("Question")
+    st.pyplot(fig)
 
 # ---- Streamlit App ----
 def main():
@@ -105,12 +120,19 @@ def main():
     question_text = st.text_area("Enter your question here:")
 
     if question_text:
-        prediction = predict_difficulty(model, scaler, question_text)
-        st.write(f"Predicted Difficulty: **{prediction:.2f}**")
+        prediction, features = predict_difficulty(model, scaler, question_text)
 
-        feedback = generate_feedback_from_gpt(question_text, prediction)
-        if feedback:
-            st.info(f"💡Suggestion:\n\n{feedback}")
+        # Highlighted Prediction
+        st.markdown(
+            f"<div style='font-size:20px; font-weight:bold; background-color:#ffeaa7; padding: 8px; border-radius: 5px;'>🎯 Predicted Difficulty: {prediction:.2f}</div>",
+            unsafe_allow_html=True
+        )
+
+        # Display Features in Table
+        st.subheader("🧮 Extracted Features")
+        st.table(pd.DataFrame([features]).T.rename(columns={0: 'Value'}))
+
+        generate_feature_heatmap([question_text])
 
         st.subheader("🤖 Generate Similar Questions")
         if st.button("Generate"):
@@ -123,9 +145,11 @@ def main():
             if generated_questions:
                 st.success("Similar questions generated:")
                 for q in generated_questions:
-                    st.markdown(f" {q}")
+                    st.markdown(f"- {q}")
 
-    
+        feedback = generate_feedback_from_gpt(question_text, prediction)
+        if feedback:
+            st.info(f"💡 Suggestion:\n\n{feedback}")
 
     st.divider()
 
@@ -138,40 +162,16 @@ def main():
         st.write(df_questions.head())
 
         predictions = []
-        suggestions = []
-        similar_questions_list = []
-        with st.spinner("Processing questions..."):
-            for q_text in df_questions.iloc[:, 0]:
-                prediction = predict_difficulty(model, scaler, q_text)
-                predictions.append(prediction)
-                
-                feedback = generate_feedback_from_gpt(q_text, prediction)
-                suggestions.append(feedback)
-                similar_qs = generate_similar_questions(
-                    base_question=q_text,
-                    difficulty=prediction,
-                    num_questions=2  # Reduce to 2 to prevent long output
-                )
-                similar_questions_list.append("\n".join(similar_qs))
+        for q_text in df_questions.iloc[:, 0]:
+            prediction, _ = predict_difficulty(model, scaler, q_text)
+            predictions.append(prediction)
 
         df_questions['Predicted Difficulty'] = predictions
-        df_questions['GPT Suggestion'] = suggestions
-        df_questions['Similar Questions'] = similar_questions_list
-        
-        st.write("📊 Questions with Predicted Difficulty, Suggestions, and Similar Questions:")
+        st.write("📊 Questions with Predicted Difficulty:")
         st.write(df_questions)
-        
-        # Optionally let the user download the enhanced CSV
-        csv = df_questions.to_csv(index=False).encode('utf-8')
-        st.download_button(
-            label="📥 Download Results as CSV",
-            data=csv,
-            file_name='questions_with_difficulty.csv',
-            mime='text/csv',
-        )
 
+        generate_feature_heatmap(df_questions.iloc[:, 0].tolist())
 
-
-# ---- Run the App ----
+# ---- Run App ----
 if __name__ == "__main__":
     main()
