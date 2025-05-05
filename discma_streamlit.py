@@ -25,15 +25,33 @@ def load_embedding_examples():
 
 # Extract features
 def extract_features(question_text):
-    features = {}
-    if isinstance(question_text, str):
-        features['num_words'] = len(question_text.split())
-        features['num_numbers'] = len(re.findall(r'\d+', question_text))
-        features['num_math_symbols'] = len(re.findall(r'[+\-*/=]', question_text))
-        features['question_length'] = len(question_text)
-        features['has_sequence_word'] = int(bool(re.search(r'\b(sequence|summation|terms|series|sum)\b', question_text, re.IGNORECASE)))
-    else:
-        features = {key: 0 for key in ['num_words', 'num_numbers', 'num_math_symbols', 'question_length', 'has_sequence_word']}
+    features = {
+        "length": 0,
+        "word_count": 0,
+        "avg_word_length": 0,
+        "num_numbers": 0,
+        "num_math_symbols": 0,
+        "num_variables": 0,
+        "readability": 0,
+        "num_keywords": 0
+    }
+
+    if not isinstance(question_text, str) or question_text.strip() == "":
+        return features
+
+    text = question_text.strip()
+    words = text.split()
+    keywords = ["sequence", "term", "sum", "summation", "series", "pattern", "next", "following", "arithmetic", "geometric"]
+
+    features["length"] = len(text)
+    features["word_count"] = len(words)
+    features["avg_word_length"] = np.mean([len(w) for w in words]) if words else 0
+    features["num_numbers"] = len(re.findall(r'\d+', text))
+    features["num_math_symbols"] = len(re.findall(r'[+\-*/=^]', text))
+    features["num_variables"] = len(re.findall(r'\b[a-zA-Z]\b', text))
+    features["readability"] = textstat.flesch_reading_ease(text)
+    features["num_keywords"] = sum(1 for word in words if word.lower() in keywords)
+
     return features
 
 # Get OpenAI embedding
