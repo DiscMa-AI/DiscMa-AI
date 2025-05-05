@@ -94,27 +94,6 @@ def generate_feedback_from_gpt(question_text, difficulty_score, model="gpt-3.5-t
     except Exception as e:
         st.error(f"OpenAI API error (feedback): {e}")
         return None
-
-#SHAP
-
-def explain_prediction_with_shap(model, scaler, explainer, question_text):
-    features = extract_features(question_text)
-    X_new = pd.DataFrame([features])
-    X_scaled = scaler.transform(X_new)
-    
-    shap_values = explainer.shap_values(X_scaled)
-    feature_names = X_new.columns.tolist()
-
-    st.subheader("🧠 Feature Contribution to Difficulty (SHAP)")
-    shap_df = pd.DataFrame({
-        'Feature': feature_names,
-        'SHAP Value': shap_values[0]
-    }).sort_values(by='SHAP Value', key=abs, ascending=True)
-
-    fig, ax = plt.subplots()
-    sns.barplot(x='SHAP Value', y='Feature', data=shap_df, palette='coolwarm', ax=ax)
-    ax.axvline(0, color='black', linestyle='--')
-    st.pyplot(fig)
     
 
 # ---- Streamlit App ----
@@ -129,9 +108,6 @@ def main():
     if question_text:
         prediction = predict_difficulty(model, scaler, question_text)
         st.write(f"Predicted Difficulty: **{prediction:.2f}**")
-
-        explainer = load_shap_explainer(model)
-        explain_prediction_with_shap(model, scaler, explainer, question_text)
 
         feedback = generate_feedback_from_gpt(question_text, prediction)
         if feedback:
