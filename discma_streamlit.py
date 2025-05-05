@@ -101,13 +101,13 @@ def generate_plot_explanation(questions, feature_data):
     )
 
     try:
-        response = openai.ChatCompletion.create(
+        response = openai.Completion.create(
             model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}],
+            prompt=prompt,
             temperature=0.7,
             max_tokens=200,
         )
-        explanation = response.choices[0].message.content.strip()
+        explanation = response.choices[0].text.strip()
         return explanation
     except Exception as e:
         st.error(f"OpenAI API error (explanation): {e}")
