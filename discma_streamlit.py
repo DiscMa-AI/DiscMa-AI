@@ -9,11 +9,13 @@ import matplotlib.pyplot as plt
 import openai
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.preprocessing import normalize
+from models.discma1 import is_in_scope  # Python logic
+
 import json
 
 @st.cache_resource
 def load_model_and_scaler():
-    model = lgb.Booster(model_file='model/discma1.txt')
+    model = lgb.Booster(model_file="models/discma1.txt")  # Trained model
     scaler = joblib.load('model/scaler1.pkl')
     return model, scaler
 
