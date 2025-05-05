@@ -8,9 +8,10 @@ import streamlit as st
 import openai
 
 # Streamlit Sidebar Settings
-st.sidebar.title("⚙️ Settings")
-use_gpt4 = st.sidebar.toggle("Use GPT-4", value=False)
-selected_model = "gpt-4" if use_gpt4 else "gpt-3.5-turbo"
+with st.sidebar:
+    st.sidebar.title("⚙️ Settings")
+    use_gpt4 = st.sidebar.toggle("Use GPT-4", value=False)
+    selected_model = "gpt-4" if use_gpt4 else "gpt-3.5-turbo"
 
 openai.api_key = st.secrets["openai_api_key"]
 
