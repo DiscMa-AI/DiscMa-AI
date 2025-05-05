@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 import openai
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.preprocessing import normalize
-from models.discma1 import is_in_scope  # Python logic
 
 import json
 
