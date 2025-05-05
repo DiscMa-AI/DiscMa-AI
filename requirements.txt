@@ -6,3 +6,5 @@ streamlit
 textstat
 joblib
 openai
+matplotlib
+seaborn
