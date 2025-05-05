@@ -126,6 +126,10 @@ def main():
 
         generate_feature_heatmap([question_text])
 
+        feedback = generate_feedback_from_gpt(question_text, prediction)
+        if feedback:
+            st.info(f"💡Suggestion:\n\n{feedback}")
+
         st.subheader("🤖 Generate Similar Questions")
         if st.button("Generate"):
             with st.spinner("Generating questions..."):
@@ -139,9 +143,7 @@ def main():
                 for q in generated_questions:
                     st.markdown(f" {q}")
 
-        feedback = generate_feedback_from_gpt(question_text, prediction)
-        if feedback:
-            st.info(f"💡Suggestion:\n\n{feedback}")
+    
 
     st.divider()
 
