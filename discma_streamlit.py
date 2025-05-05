@@ -132,28 +132,30 @@ def main():
         feature_df = pd.DataFrame([features])
         st.table(feature_df)
 
-        explanation = generate_explanation(question_text, prediction, features)
-        st.subheader("🧠 Explanation")
-        st.write(explanation)
+        if features['has_sequence_word']:
+            explanation = generate_explanation(question_text, prediction, features)
+            st.subheader("🧠 Explanation")
+            st.write(explanation)
 
-        generate_feature_heatmap([question_text])
+            generate_feature_heatmap([question_text])
 
-        st.subheader("🤖 Generate Questions Based on This")
-
-        for diff_type in ["similar", "easier", "harder"]:
-            st.markdown(f"### {diff_type.capitalize()} Questions")
-            if st.button(f"Generate {diff_type} questions"):
-                with st.spinner(f"Generating {diff_type} questions..."):
-                    note, generated_questions = generate_custom_questions(
-                        base_question=question_text,
-                        difficulty=prediction,
-                        difficulty_type=diff_type,
-                        num_questions=3
-                    )
-                if generated_questions:
-                    st.success(note)
-                    for q in generated_questions:
-                        st.markdown(f"- {q}")
+            st.subheader("🤖 Generate Questions Based on This")
+            for diff_type in ["similar", "easier", "harder"]:
+                st.markdown(f"### {diff_type.capitalize()} Questions")
+                if st.button(f"Generate {diff_type} questions"):
+                    with st.spinner(f"Generating {diff_type} questions..."):
+                        note, generated_questions = generate_custom_questions(
+                            base_question=question_text,
+                            difficulty=prediction,
+                            difficulty_type=diff_type,
+                            num_questions=3
+                        )
+                    if generated_questions:
+                        st.success(note)
+                        for q in generated_questions:
+                            st.markdown(f"- {q}")
+        else:
+            st.warning("⚠️ This question appears to be outside the scope of sequences and summations, so no explanation or generation will be provided.")
 
     st.divider()
 
@@ -174,7 +176,6 @@ def main():
             st.markdown(f"---\n### Question {idx + 1}:")
             st.markdown(f"**Text:** {q_text}")
 
-            # Predict and show features
             prediction, features = predict_difficulty(model, scaler, q_text)
             st.markdown(f"**Predicted Difficulty:** <span style='color:blue; font-weight:bold;'>{prediction:.2f}</span>", unsafe_allow_html=True)
 
@@ -182,26 +183,27 @@ def main():
             st.markdown("**Extracted Features:**")
             st.table(feature_df)
 
-            # Explanation
-            explanation = generate_explanation(q_text, prediction, features)
-            st.markdown("**Explanation:**")
-            st.write(explanation)
+            if features['has_sequence_word']:
+                explanation = generate_explanation(q_text, prediction, features)
+                st.markdown("**Explanation:**")
+                st.write(explanation)
 
-            # Question generation
-            with st.expander("🤖 Generate Questions Based on This"):
-                for diff_type in ["similar", "easier", "harder"]:
-                    if st.button(f"Generate {diff_type} questions for Q{idx + 1}", key=f"{diff_type}_{idx}"):
-                        with st.spinner(f"Generating {diff_type} questions..."):
-                            note, generated_questions = generate_custom_questions(
-                                base_question=q_text,
-                                difficulty=prediction,
-                                difficulty_type=diff_type,
-                                num_questions=3
-                            )
-                        if generated_questions:
-                            st.success(note)
-                            for q in generated_questions:
-                                st.markdown(f"- {q}")
+                with st.expander("🤖 Generate Questions Based on This"):
+                    for diff_type in ["similar", "easier", "harder"]:
+                        if st.button(f"Generate {diff_type} questions for Q{idx + 1}", key=f"{diff_type}_{idx}"):
+                            with st.spinner(f"Generating {diff_type} questions..."):
+                                note, generated_questions = generate_custom_questions(
+                                    base_question=q_text,
+                                    difficulty=prediction,
+                                    difficulty_type=diff_type,
+                                    num_questions=3
+                                )
+                            if generated_questions:
+                                st.success(note)
+                                for q in generated_questions:
+                                    st.markdown(f"- {q}")
+            else:
+                st.warning("⚠️ This question appears to be outside the scope of sequences and summations, so no explanation or generation will be provided.")
 
             detailed_results.append({
                 "Question": q_text,
@@ -209,7 +211,7 @@ def main():
                 **features
             })
 
-        # Show heatmap
+        # Show heatmap if any results
         if detailed_results:
             question_texts = [r["Question"] for r in detailed_results]
             generate_feature_heatmap(question_texts)
