@@ -8,7 +8,6 @@ import streamlit as st
 import openai
 import seaborn as sns
 import matplotlib.pyplot as plt
-import shap
 
 # ---- Load Trained Model and Scaler ----
 @st.cache_resource
