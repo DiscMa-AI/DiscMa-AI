@@ -8,3 +8,4 @@ joblib
 openai
 matplotlib
 seaborn
+shap
