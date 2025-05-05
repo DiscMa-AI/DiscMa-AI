@@ -18,10 +18,7 @@ def load_model_and_scaler():
     scaler = joblib.load('model/scaler1.pkl')
     return model, scaler
 
-# Load embedding examples (precomputed vectors of in-scope questions)
-def load_embedding_examples():
-    with open("model/sequence_examples_embeddings.json") as f:
-        return json.load(f)
+
 
 # Extract features
 def extract_features(question_text):
