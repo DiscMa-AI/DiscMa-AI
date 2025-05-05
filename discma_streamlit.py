@@ -8,6 +8,8 @@ import streamlit as st
 import openai
 import seaborn as sns
 import matplotlib.pyplot as plt
+import shap
+
 # ---- Load Trained Model and Scaler ----
 @st.cache_resource
 def load_model_and_scaler():
@@ -15,6 +17,10 @@ def load_model_and_scaler():
     scaler = joblib.load('model/scaler.pkl')
     return model, scaler
 
+def load_shap_explainer(model):
+    explainer = shap.TreeExplainer(model)
+    return explainer
+    
 # ---- Custom Feature Extractor (exact match with training) ----
 def extract_features(question_text):
     features = {}
@@ -89,25 +95,25 @@ def generate_feedback_from_gpt(question_text, difficulty_score, model="gpt-3.5-t
         st.error(f"OpenAI API error (feedback): {e}")
         return None
 
-# ---- Feature Heatmap ----
-        
-def generate_feature_heatmap(questions):
-    feature_data = []
-    question_labels = []
+#SHAP
 
-    for idx, q in enumerate(questions):
-        features = extract_features(q)
-        feature_data.append(features)
-        label = f"Q{idx+1}" if len(q) > 30 else q
-        question_labels.append(label[:30] + '...' if len(label) > 30 else label)
+def explain_prediction_with_shap(model, scaler, explainer, question_text):
+    features = extract_features(question_text)
+    X_new = pd.DataFrame([features])
+    X_scaled = scaler.transform(X_new)
+    
+    shap_values = explainer.shap_values(X_scaled)
+    feature_names = X_new.columns.tolist()
 
-    feature_df = pd.DataFrame(feature_data, index=question_labels)
+    st.subheader("🧠 Feature Contribution to Difficulty (SHAP)")
+    shap_df = pd.DataFrame({
+        'Feature': feature_names,
+        'SHAP Value': shap_values[0]
+    }).sort_values(by='SHAP Value', key=abs, ascending=True)
 
-    st.subheader("🔍 Feature Heatmap of Questions")
-    fig, ax = plt.subplots(figsize=(10, max(2, len(questions)*0.5)))
-    sns.heatmap(feature_df, annot=True, cmap="viridis", fmt="d", cbar_kws={'label': 'Value'}, ax=ax)
-    ax.set_xlabel("Features")
-    ax.set_ylabel("Question")
+    fig, ax = plt.subplots()
+    sns.barplot(x='SHAP Value', y='Feature', data=shap_df, palette='coolwarm', ax=ax)
+    ax.axvline(0, color='black', linestyle='--')
     st.pyplot(fig)
     
 
@@ -124,7 +130,8 @@ def main():
         prediction = predict_difficulty(model, scaler, question_text)
         st.write(f"Predicted Difficulty: **{prediction:.2f}**")
 
-        generate_feature_heatmap([question_text])
+        gexplainer = load_shap_explainer(model)
+        explain_prediction_with_shap(model, scaler, explainer, question_text)
 
         feedback = generate_feedback_from_gpt(question_text, prediction)
         if feedback:
@@ -164,7 +171,7 @@ def main():
         st.write("📊 Questions with Predicted Difficulty:")
         st.write(df_questions)
 
-        generate_feature_heatmap(df_questions.iloc[:, 0].tolist())
+
 
 # ---- Run the App ----
 if __name__ == "__main__":
