@@ -136,7 +136,6 @@ def generate_feature_heatmap(questions):
 def main():
     st.title("📊 Discrete Math Question Difficulty Predictor")
     model, scaler = load_model_and_scaler()
-    emb_examples = load_embedding_examples()
 
     st.subheader("🔤 Enter a Question")
     question_text = st.text_area("Enter your question:")
