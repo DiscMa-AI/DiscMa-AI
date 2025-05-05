@@ -5,6 +5,14 @@ import joblib
 import re
 import textstat
 import streamlit as st
+import openai
+
+# Streamlit Sidebar Settings
+st.sidebar.title("⚙️ Settings")
+use_gpt4 = st.sidebar.toggle("Use GPT-4", value=False)
+selected_model = "gpt-4" if use_gpt4 else "gpt-3.5-turbo"
+
+openai.api_key = st.secrets["openai_api_key"]
 
 # ---- Load Trained Model and Scaler ----
 @st.cache_resource
