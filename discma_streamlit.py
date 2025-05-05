@@ -44,7 +44,7 @@ def predict_difficulty(model, scaler, question_text):
     return prediction[0]
 
 def generate_similar_questions(base_question, difficulty, num_questions=3, model="gpt-3.5-turbo"):
-    client = openai.OpenAI(api_key=st.secrets["openai_api_key"])
+    client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
     prompt = (
         f"Generate {num_questions} discrete math questions similar to the following, "
