@@ -145,7 +145,7 @@ def main():
                 prediction = predict_difficulty(model, scaler, q_text)
                 predictions.append(prediction)
                 
-                feedback = generate_feedback_from_gpt(q_text, pred)
+                feedback = generate_feedback_from_gpt(q_text, prediction)
                 suggestions.append(feedback)
                 similar_qs = generate_similar_questions(
                     base_question=q_text,
