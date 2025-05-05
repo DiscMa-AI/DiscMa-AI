@@ -15,8 +15,8 @@ import json
 
 @st.cache_resource
 def load_model_and_scaler():
-    model = lgb.Booster(model_file='model/discma1.txt')
-    scaler = joblib.load('model/scaler1.pkl')
+    model = lgb.Booster(model_file='model/discma.txt')
+    scaler = joblib.load('model/scaler.pkl')
     return model, scaler
 
 # Load embedding examples (precomputed vectors of in-scope questions)
