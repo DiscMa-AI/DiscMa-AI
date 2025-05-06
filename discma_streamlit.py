@@ -220,33 +220,73 @@ def main():
         st.dataframe(df.head())
 
         results = []
-        keywords = ["sequence", "term", "sum", "summation", "series", "pattern", "next", "following", "arithmetic", "geometric"]
+keywords = ["sequence", "term", "sum", "summation", "series", "pattern", "next", "following", "arithmetic", "geometric"]
 
-        for q in df.iloc[:, 0]:
-            if not isinstance(q, str) or not q.strip():
-                results.append({"Question": q, "Adjusted Difficulty": "Invalid", "Explanation": "❌ Empty or non-text input."})
-                continue
+for q in df.iloc[:, 0]:
+    if not isinstance(q, str) or not q.strip():
+        results.append({
+            "Question": q,
+            "Adjusted Difficulty": "Invalid",
+            "Explanation": "❌ Empty or non-text input.",
+            "Similar Questions": "",
+            "Easier Questions": "",
+            "Harder Questions": ""
+        })
+        continue
 
-            cleaned_q = q.strip()
-            if len(cleaned_q.split()) < 4:
-                results.append({"Question": q, "Adjusted Difficulty": "Too short", "Explanation": "❌ Too short or malformed question."})
-                continue
+    cleaned_q = q.strip()
+    if len(cleaned_q.split()) < 4:
+        results.append({
+            "Question": q,
+            "Adjusted Difficulty": "Too short",
+            "Explanation": "❌ Too short or malformed question.",
+            "Similar Questions": "",
+            "Easier Questions": "",
+            "Harder Questions": ""
+        })
+        continue
 
-            if not any(kw in cleaned_q.lower() for kw in keywords):
-                results.append({"Question": q, "Adjusted Difficulty": "Out of scope", "Explanation": "❌ Question is not about sequences or summations."})
-                continue
+    if not any(kw in cleaned_q.lower() for kw in keywords):
+        results.append({
+            "Question": q,
+            "Adjusted Difficulty": "Out of scope",
+            "Explanation": "❌ Question is not about sequences or summations.",
+            "Similar Questions": "",
+            "Easier Questions": "",
+            "Harder Questions": ""
+        })
+        continue
 
-            try:
-                _, adjusted_difficulty, features = calculate_adjusted_difficulty(model, scaler, cleaned_q)
-                explanation = generate_explanation_with_feature_impact_adjustment(cleaned_q, adjusted_difficulty, features)
-                results.append({
-                    "Question": q,
-                    "Adjusted Difficulty": round(adjusted_difficulty, 2),
-                    "Explanation": explanation,
-                })
-            except Exception as e:
-                results.append({"Question": q, "Adjusted Difficulty": "Error", "Explanation": f"❌ Processing error: {e}"})
+    try:
+        _, adjusted_difficulty, features = calculate_adjusted_difficulty(model, scaler, cleaned_q)
+        explanation = generate_explanation_with_feature_impact_adjustment(cleaned_q, adjusted_difficulty, features)
 
+        similar_qs = generate_custom_questions(cleaned_q, adjusted_difficulty, "similar", num_questions=2)
+        easier_qs = generate_custom_questions(cleaned_q, adjusted_difficulty, "easier", num_questions=2)
+        harder_qs = generate_custom_questions(cleaned_q, adjusted_difficulty, "harder", num_questions=2)
+
+        results.append({
+            "Question": q,
+            "Adjusted Difficulty": round(adjusted_difficulty, 2),
+            "Explanation": explanation,
+            "Similar Questions": " | ".join(similar_qs),
+            "Easier Questions": " | ".join(easier_qs),
+            "Harder Questions": " | ".join(harder_qs)
+        })
+
+    except Exception as e:
+        results.append({
+            "Question": q,
+            "Adjusted Difficulty": "Error",
+            "Explanation": f"❌ Processing error: {e}",
+            "Similar Questions": "",
+            "Easier Questions": "",
+            "Harder Questions": ""
+        })
+
+# Display all results
+result_df = pd.DataFrame(results)
+st.dataframe(result_df)
         processed_df = pd.DataFrame(results)
         st.write("✅ Processed Results:")
         st.dataframe(processed_df)
