@@ -135,7 +135,7 @@ def generate_feature_heatmap(questions):
     feature_data = [extract_features(q) for q in questions]
     labels = [q[:30] + '...' if len(q) > 30 else q for q in questions]
     df = pd.DataFrame(feature_data, index=labels)
-    st.subheader("🔍 Feature Heatmap")
+    st.subheader("\U0001F50D Feature Heatmap")
     fig, ax = plt.subplots(figsize=(10, len(questions) * 0.5 + 2))
     sns.heatmap(df, annot=True, cmap="viridis", fmt=".2f", ax=ax)
     st.pyplot(fig)
@@ -143,63 +143,43 @@ def generate_feature_heatmap(questions):
 # Main application
 def main():
     st.set_page_config(page_title="Discrete Math Difficulty Predictor", layout="wide")
-    st.title("📊 Discrete Math Question Difficulty Predictor")
+    st.title("\U0001F4CA Discrete Math Question Difficulty Predictor")
 
     st.markdown("""
-    ### 📌 Instructions for Use
+    ### \U0001F4CC Instructions for Use
 
     #### Manual Input
     - Enter a **single discrete math question** focused on **sequences and summations**.
-    - Supported topics: arithmetic sequences, geometric series, patterns, summation notation, and next-term prediction.
-    - Questions outside this scope (e.g., on calculus, logic, or set theory) will be flagged.
 
-    #### 📋 CSV Upload
-    - Upload a **CSV file** containing only **one column** of discrete math questions.
-    - Sample format:
-
-        | Question |
-        |----------|
-        | What is the next term in the sequence 2, 4, 6, 8? |
-        | Find the sum of the first 10 terms of the series 3 + 6 + 9 + ... |
-        | Is the following sequence arithmetic or geometric: 1, 2, 4, 8, 16? |
-
-    - Files with multiple columns or empty/malformed rows will be rejected.
+    #### \U0001F4CB CSV Upload
+    - Upload a **CSV file** with a **single column** of questions under the header `Question`.
     """)
 
     model, scaler = load_model_and_scaler()
 
     # Manual Input Section
-    st.subheader("🔤 Manual Input")
+    st.subheader("\U0001F524 Manual Input")
     question_text = st.text_area("Enter your discrete math question:")
 
     if question_text:
         cleaned_input = question_text.strip()
         if not cleaned_input:
-            st.warning("⚠️ Please enter a non-empty question.")
-            return
-
-        keywords = ["sequence", "term", "sum", "summation", "series", "pattern", "next", "following", "arithmetic", "geometric"]
-        if not any(kw in cleaned_input.lower() for kw in keywords):
-            st.warning("⚠️ This question does not appear to be related to sequences or summations.")
-            return
-
-        if len(cleaned_input.split()) < 4:
-            st.warning("⚠️ The question seems too short or ambiguous. Please enter a full question.")
+            st.warning("\u26A0\uFE0F Please enter a non-empty question.")
             return
 
         _, adjusted_difficulty, features = calculate_adjusted_difficulty(model, scaler, cleaned_input)
 
-        st.subheader("📌 Feature Analysis")
+        st.subheader("\U0001F4CC Feature Analysis")
         st.table(pd.DataFrame([features]))
 
         explanation = generate_explanation_with_feature_impact_adjustment(cleaned_input, adjusted_difficulty, features)
-        st.subheader("🧠 Explanation with Feature Impact")
+        st.subheader("\U0001F9E0 Explanation with Feature Impact")
         st.write(explanation)
-        st.markdown(f"**📈 Adjusted Difficulty:** `{adjusted_difficulty:.2f}`")
+        st.markdown(f"**\U0001F4C8 Adjusted Difficulty:** `{adjusted_difficulty:.2f}`")
 
         generate_feature_heatmap([cleaned_input])
 
-        st.subheader("🤖 Generate Related Questions")
+        st.subheader("\U0001F916 Generate Related Questions")
         for diff_type in ["similar", "easier", "harder"]:
             if st.button(f"Generate {diff_type.capitalize()} Questions"):
                 with st.spinner("Generating..."):
@@ -211,51 +191,34 @@ def main():
     st.divider()
 
     # CSV Upload Section
-    st.subheader("📁 Upload CSV")
+    st.subheader("\U0001F4C1 Upload CSV")
     uploaded_file = st.file_uploader("Upload a CSV of discrete math questions", type=["csv"])
 
     if uploaded_file:
         df = pd.read_csv(uploaded_file)
-        st.write("📄 Preview of Uploaded File:")
+        st.write("\U0001F4C4 Preview of Uploaded File:")
         st.dataframe(df.head())
 
-        results = []
-        keywords = ["sequence", "term", "sum", "summation", "series", "pattern", "next", "following", "arithmetic", "geometric"]
-
-        for q in df.iloc[:, 0]:
+        for index, row in df.iterrows():
+            q = row[0]
             if not isinstance(q, str) or not q.strip():
-                results.append({"Question": q, "Adjusted Difficulty": "Invalid", "Explanation": "❌ Empty or non-text input."})
                 continue
 
             cleaned_q = q.strip()
-            if len(cleaned_q.split()) < 4:
-                results.append({"Question": q, "Adjusted Difficulty": "Too short", "Explanation": "❌ Too short or malformed question."})
-                continue
+            _, adjusted_difficulty, features = calculate_adjusted_difficulty(model, scaler, cleaned_q)
+            explanation = generate_explanation_with_feature_impact_adjustment(cleaned_q, adjusted_difficulty, features)
 
-            if not any(kw in cleaned_q.lower() for kw in keywords):
-                results.append({"Question": q, "Adjusted Difficulty": "Out of scope", "Explanation": "❌ Question is not about sequences or summations."})
-                continue
+            st.markdown(f"### Question {index + 1}: {cleaned_q}")
+            st.markdown(f"**Adjusted Difficulty:** `{adjusted_difficulty:.2f}`")
+            st.markdown(f"**Explanation:** {explanation}")
 
-            try:
-                _, adjusted_difficulty, features = calculate_adjusted_difficulty(model, scaler, cleaned_q)
-                explanation = generate_explanation_with_feature_impact_adjustment(cleaned_q, adjusted_difficulty, features)
-                results.append({
-                    "Question": q,
-                    "Adjusted Difficulty": round(adjusted_difficulty, 2),
-                    "Explanation": explanation,
-                })
-            except Exception as e:
-                results.append({"Question": q, "Adjusted Difficulty": "Error", "Explanation": f"❌ Processing error: {e}"})
+            for diff_type in ["similar", "easier", "harder"]:
+                if st.button(f"Generate {diff_type.capitalize()} for Q{index + 1}"):
+                    with st.spinner("Generating..."):
+                        questions = generate_custom_questions(cleaned_q, adjusted_difficulty, diff_type)
+                    st.success(f"{diff_type.capitalize()} Questions for Q{index + 1}:")
+                    for q in questions:
+                        st.markdown(f"- {q}")
 
-        processed_df = pd.DataFrame(results)
-        st.write("✅ Processed Results:")
-        st.dataframe(processed_df)
-
-        valid_questions = [row["Question"] for row in results if isinstance(row["Adjusted Difficulty"], (int, float))]
-        if valid_questions:
-            generate_feature_heatmap(valid_questions)
-
-        st.download_button("📥 Download Processed CSV", processed_df.to_csv(index=False), "processed_questions.csv")
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
