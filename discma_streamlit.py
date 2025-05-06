@@ -19,9 +19,7 @@ def load_model_and_scaler():
     return model, scaler
 
 # Load embedding examples (precomputed vectors of in-scope questions)
-def load_embedding_examples():
-    with open("model/sequence_examples_embeddings.json") as f:
-        return json.load(f)
+
 
 # Extract features
 def extract_features(question_text):
@@ -55,23 +53,7 @@ def extract_features(question_text):
     return features
 
 # Get OpenAI embedding
-@st.cache_data(show_spinner=False)
-def get_embedding(text):
-    client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-    try:
-        response = client.embeddings.create(input=[text], model="text-embedding-3-small")
-        return np.array(response.data[0].embedding)
-    except Exception as e:
-        st.warning(f"Embedding error: {e}")
-        return np.zeros(1536)  # default size for fallback
 
-# Check if question is in-scope
-def is_in_scope(question_text, embedding_examples, threshold=0.8):
-    emb = get_embedding(question_text)
-    emb = normalize([emb])[0]
-    example_embeddings = np.array(embedding_examples["embeddings"])
-    sims = cosine_similarity([emb], example_embeddings)[0]
-    return max(sims) >= threshold
 
 # Predict difficulty
 def predict_difficulty(model, scaler, question_text):
@@ -139,34 +121,30 @@ def generate_feature_heatmap(questions):
 def main():
     st.title("📊 Discrete Math Question Difficulty Predictor")
     model, scaler = load_model_and_scaler()
-    emb_examples = load_embedding_examples()
 
     st.subheader("🔤 Enter a Question")
     question_text = st.text_area("Enter your question:")
 
     if question_text:
-        in_scope = is_in_scope(question_text, emb_examples)
         prediction, features = predict_difficulty(model, scaler, question_text)
         st.markdown(f"**Predicted Difficulty:** {prediction:.2f}")
         st.subheader("📌 Features")
         st.table(pd.DataFrame([features]))
 
-        if in_scope:
-            explanation = generate_explanation(question_text, prediction, features)
-            st.subheader("🧠 Explanation")
-            st.write(explanation)
-            generate_feature_heatmap([question_text])
+        explanation = generate_explanation(question_text, prediction, features)
+        st.subheader("🧠 Explanation")
+        st.write(explanation)
+        generate_feature_heatmap([question_text])
 
-            st.subheader("🤖 Generate Questions")
-            for diff_type in ["similar", "easier", "harder"]:
-                if st.button(f"Generate {diff_type.capitalize()} Questions"):
-                    with st.spinner("Generating..."):
-                        questions = generate_custom_questions(question_text, prediction, diff_type)
-                    st.success(f"{diff_type.capitalize()} Questions:")
-                    for q in questions:
-                        st.markdown(f"- {q}")
-        else:
-            st.warning("This question appears to be outside the scope (not about sequences or summations). No generation performed.")
+        st.subheader("🤖 Generate Questions")
+        for diff_type in ["similar", "easier", "harder"]:
+            if st.button(f"Generate {diff_type.capitalize()} Questions"):
+                with st.spinner("Generating..."):
+                    questions = generate_custom_questions(question_text, prediction, diff_type)
+                st.success(f"{diff_type.capitalize()} Questions:")
+                for q in questions:
+                    st.markdown(f"- {q}")
+        
 
     st.divider()
     st.subheader("📁 Upload CSV")
@@ -176,14 +154,12 @@ def main():
         df = pd.read_csv(uploaded_file)
         st.write("Preview:", df.head())
 
-        predictions, scopes = [], []
-        for q in df.iloc[:, 0]:
-            pred, _ = predict_difficulty(model, scaler, q)
-            predictions.append(pred)
-            scopes.append(is_in_scope(q, emb_examples))
+predictions = []
+for q in df.iloc[:, 0]:
+    pred, _ = predict_difficulty(model, scaler, q)
+    predictions.append(pred)
 
-        df['Predicted Difficulty'] = predictions
-        df['In Scope'] = scopes
+df['Predicted Difficulty'] = predictions
         st.write("Processed Data:", df)
         generate_feature_heatmap(df.iloc[:, 0].tolist())
         st.download_button("📥 Download Processed CSV", df.to_csv(index=False), "processed_questions.csv")
