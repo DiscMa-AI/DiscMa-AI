@@ -204,6 +204,8 @@ These questions **will not be processed** because they fall outside the scope of
 
 These types of questions will be **ignored** by the app, as they do not pertain to sequences and summations.
 
+NOTE: Since each question for the table is treated individually, it is advisable to have at most 10 questions else it will be slow.
+
 """)
 
 
