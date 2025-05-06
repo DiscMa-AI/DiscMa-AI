@@ -56,6 +56,7 @@ def predict_difficulty(model, scaler, question_text):
     return prediction[0], features
 
 # Generate explanation based on feature insights
+# Generate explanation based on feature insights
 def generate_explanation_with_features(question_text, difficulty_score, features, model="gpt-3.5-turbo"):
     client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
     
@@ -69,7 +70,7 @@ def generate_explanation_with_features(question_text, difficulty_score, features
     readability = features["readability"]
     num_keywords = features["num_keywords"]
     
-    # Build the explanation prompt including features
+    # Build a prompt that will guide GPT-3 to explain why the question has this level of difficulty.
     prompt = (
         f"Question: \"{question_text}\"\n"
         f"Predicted Difficulty: {difficulty_score:.2f}\n"
@@ -82,9 +83,10 @@ def generate_explanation_with_features(question_text, difficulty_score, features
         f"Number of Variables: {num_variables}\n"
         f"Readability (Flesch Score): {readability:.2f}\n"
         f"Number of Keywords: {num_keywords}\n\n"
-        f"Explain why this question is considered to have this difficulty level, "
-        f"taking into account how the structure and content of the question (as reflected in the features) "
-        f"affects its perceived difficulty."
+        f"Given these features, explain in detail why this question is considered to have a difficulty level of {difficulty_score:.2f}. "
+        f"Consider how the length of the question, word count, presence of mathematical symbols and variables, readability, and use of keywords impact the overall difficulty. "
+        f"For example, discuss how complex the mathematical content is (e.g., the number of symbols and variables), the clarity or difficulty of the language (based on readability), "
+        f"and how the length or word count might affect how challenging the question is."
     )
     
     try:
@@ -97,6 +99,7 @@ def generate_explanation_with_features(question_text, difficulty_score, features
         return response.choices[0].message.content.strip()
     except Exception as e:
         return f"Explanation error: {e}"
+
 
 # Generate related questions
 def generate_custom_questions(base_question, difficulty, difficulty_type="similar", num_questions=3, model="gpt-3.5-turbo"):
