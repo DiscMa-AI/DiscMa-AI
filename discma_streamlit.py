@@ -211,74 +211,51 @@ def main():
     st.divider()
 
     # CSV Upload Section
-    # CSV Upload Section with individual buttons for each question
-st.subheader("📁 Upload CSV")
-uploaded_file = st.file_uploader("Upload a CSV of discrete math questions", type=["csv"])
+    st.subheader("📁 Upload CSV")
+    uploaded_file = st.file_uploader("Upload a CSV of discrete math questions", type=["csv"])
 
-if uploaded_file:
-    df = pd.read_csv(uploaded_file)
-    st.write("📄 Preview of Uploaded File:")
-    st.dataframe(df.head())
+    if uploaded_file:
+        df = pd.read_csv(uploaded_file)
+        st.write("📄 Preview of Uploaded File:")
+        st.dataframe(df.head())
 
-    results = []
-    keywords = ["sequence", "term", "sum", "summation", "series", "pattern", "next", "following", "arithmetic", "geometric"]
+        results = []
+        keywords = ["sequence", "term", "sum", "summation", "series", "pattern", "next", "following", "arithmetic", "geometric"]
 
-    for q in df.iloc[:, 0]:
-        if not isinstance(q, str) or not q.strip():
-            results.append({"Question": q, "Adjusted Difficulty": "Invalid", "Explanation": "❌ Empty or non-text input."})
-            continue
+        for q in df.iloc[:, 0]:
+            if not isinstance(q, str) or not q.strip():
+                results.append({"Question": q, "Adjusted Difficulty": "Invalid", "Explanation": "❌ Empty or non-text input."})
+                continue
 
-        cleaned_q = q.strip()
-        if len(cleaned_q.split()) < 4:
-            results.append({"Question": q, "Adjusted Difficulty": "Too short", "Explanation": "❌ Too short or malformed question."})
-            continue
+            cleaned_q = q.strip()
+            if len(cleaned_q.split()) < 4:
+                results.append({"Question": q, "Adjusted Difficulty": "Too short", "Explanation": "❌ Too short or malformed question."})
+                continue
 
-        if not any(kw in cleaned_q.lower() for kw in keywords):
-            results.append({"Question": q, "Adjusted Difficulty": "Out of scope", "Explanation": "❌ Question is not about sequences or summations."})
-            continue
+            if not any(kw in cleaned_q.lower() for kw in keywords):
+                results.append({"Question": q, "Adjusted Difficulty": "Out of scope", "Explanation": "❌ Question is not about sequences or summations."})
+                continue
 
-        try:
-            _, adjusted_difficulty, features = calculate_adjusted_difficulty(model, scaler, cleaned_q)
-            explanation = generate_explanation_with_feature_impact_adjustment(cleaned_q, adjusted_difficulty, features)
-            results.append({
-                "Question": q,
-                "Adjusted Difficulty": round(adjusted_difficulty, 2),
-                "Explanation": explanation,
-                "Related Questions": "",  # Placeholder for related questions button
-            })
-        except Exception as e:
-            results.append({"Question": q, "Adjusted Difficulty": "Error", "Explanation": f"❌ Processing error: {e}", "Related Questions": ""})
+            try:
+                _, adjusted_difficulty, features = calculate_adjusted_difficulty(model, scaler, cleaned_q)
+                explanation = generate_explanation_with_feature_impact_adjustment(cleaned_q, adjusted_difficulty, features)
+                results.append({
+                    "Question": q,
+                    "Adjusted Difficulty": round(adjusted_difficulty, 2),
+                    "Explanation": explanation,
+                })
+            except Exception as e:
+                results.append({"Question": q, "Adjusted Difficulty": "Error", "Explanation": f"❌ Processing error: {e}"})
 
-    processed_df = pd.DataFrame(results)
-    st.write("✅ Processed Results:")
-    st.dataframe(processed_df)
+        processed_df = pd.DataFrame(results)
+        st.write("✅ Processed Results:")
+        st.dataframe(processed_df)
 
-    # Generate related questions for each question in the CSV
-    for index, row in processed_df.iterrows():
-        question = row['Question']
-        adjusted_difficulty = row['Adjusted Difficulty']
+        valid_questions = [row["Question"] for row in results if isinstance(row["Adjusted Difficulty"], (int, float))]
+        if valid_questions:
+            generate_feature_heatmap(valid_questions)
 
-        if isinstance(adjusted_difficulty, (int, float)):
-            st.write(f"**Question:** {question}")
-            st.markdown(f"**📈 Adjusted Difficulty:** {adjusted_difficulty:.2f}")
-            st.subheader("🤖 Generate Related Questions")
-
-            for diff_type in ["similar", "easier", "harder"]:
-                if st.button(f"Generate {diff_type.capitalize()} Questions for: {question}"):
-                    with st.spinner(f"Generating {diff_type} questions..."):
-                        related_questions = generate_custom_questions(question, adjusted_difficulty, diff_type)
-                    st.success(f"{diff_type.capitalize()} Questions:")
-                    for q in related_questions:
-                        st.markdown(f"- {q}")
-                    
-    st.divider()
-
-    # Feature heatmap generation for valid questions
-    valid_questions = [row["Question"] for row in results if isinstance(row["Adjusted Difficulty"], (int, float))]
-    if valid_questions:
-        generate_feature_heatmap(valid_questions)
-
-    st.download_button("📥 Download Processed CSV", processed_df.to_csv(index=False), "processed_questions.csv")
+        st.download_button("📥 Download Processed CSV", processed_df.to_csv(index=False), "processed_questions.csv")
 
 if __name__ == '__main__':
     main()
