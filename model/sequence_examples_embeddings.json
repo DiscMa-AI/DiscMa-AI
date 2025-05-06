@@ -1,1 +1,13 @@
+{
+  "questions": [
+    "What is the next number in the sequence 2, 4, 6, 8?",
+    "Find the sum of the first 10 terms of the arithmetic sequence starting at 5 with a common difference of 3.",
+    "What is the 7th term of the geometric sequence: 3, 6, 12, ...?"
+  ],
+  "embeddings": [
+    [0.01, 0.02, 0.03, 0.04, 0.05],
+    [0.11, 0.12, 0.13, 0.14, 0.15],
+    [0.21, 0.22, 0.23, 0.24, 0.25]
+  ]
+}
 
