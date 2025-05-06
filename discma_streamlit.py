@@ -8,7 +8,8 @@ import streamlit as st
 import seaborn as sns
 import matplotlib.pyplot as plt
 import openai
-import textstat  # Required for readability metric
+import textstat
+import json
 
 @st.cache_resource
 def load_model_and_scaler():
@@ -105,7 +106,7 @@ def generate_feature_heatmap(questions):
     df = pd.DataFrame(feature_data, index=labels)
     st.subheader("🔍 Feature Heatmap")
     fig, ax = plt.subplots(figsize=(10, len(questions)*0.5 + 2))
-    sns.heatmap(df, annot=True, cmap="viridis", fmt=".2f", ax=ax)
+    sns.heatmap(df.astype(float), annot=True, cmap="viridis", fmt=".2f", ax=ax)
     st.pyplot(fig)
 
 # Main app
@@ -144,46 +145,22 @@ def main():
         df = pd.read_csv(uploaded_file)
         st.write("Preview:", df.head())
 
-        predictions = []
-        for q in df.iloc[:, 0]:
-            pred, _ = predict_difficulty(model, scaler, q)
-            predictions.append(pred)
-
-        df['Predicted Difficulty'] = predictions
-        st.write("Processed Data:", df)
-        generate_feature_heatmap(df.iloc[:, 0].tolist())
-        st.download_button("📥 Download Processed CSV", df.to_csv(index=False), "processed_questions.csv")    if uploaded_file:
-        df = pd.read_csv(uploaded_file)
-        st.write("Preview:", df.head())
-
         results = []
         for q in df.iloc[:, 0]:
             pred, features = predict_difficulty(model, scaler, q)
             explanation = generate_explanation(q, pred, features)
-
-            # Optional: You can uncomment these if you want to generate questions
-            # sim_qs = generate_custom_questions(q, pred, "similar")
-            # easier_qs = generate_custom_questions(q, pred, "easier")
-            # harder_qs = generate_custom_questions(q, pred, "harder")
-
             results.append({
                 "Question": q,
                 "Predicted Difficulty": round(pred, 2),
                 "Features": json.dumps(features),
-                "Explanation": explanation,
-                # "Similar Questions": " | ".join(sim_qs),
-                # "Easier Questions": " | ".join(easier_qs),
-                # "Harder Questions": " | ".join(harder_qs),
+                "Explanation": explanation
             })
 
         processed_df = pd.DataFrame(results)
-        st.write("Processed Data with Explanations and Features:")
+        st.write("📋 Processed Data with Features and Explanations")
         st.dataframe(processed_df)
-
         generate_feature_heatmap(processed_df["Question"].tolist())
-
         st.download_button("📥 Download Processed CSV", processed_df.to_csv(index=False), "processed_questions.csv")
-
 
 if __name__ == '__main__':
     main()
