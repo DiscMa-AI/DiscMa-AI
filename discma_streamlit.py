@@ -1,3 +1,4 @@
+# Enhanced Streamlit App with Difficulty Adjustment Based on Features
 import pandas as pd
 import numpy as np
 import lightgbm as lgb
@@ -7,8 +8,7 @@ import streamlit as st
 import seaborn as sns
 import matplotlib.pyplot as plt
 import openai
-import textstat  # Required for readability metric
-import json
+import textstat
 
 @st.cache_resource
 def load_model_and_scaler():
@@ -47,46 +47,57 @@ def extract_features(question_text):
 
     return features
 
-# Predict difficulty
-def predict_difficulty(model, scaler, question_text):
+# Feature Weights for Difficulty Adjustment
+FEATURE_WEIGHTS = {
+    "length": 0.2,
+    "word_count": 0.1,
+    "avg_word_length": 0.05,
+    "num_numbers": 0.1,
+    "num_math_symbols": 0.25,
+    "num_variables": 0.15,
+    "readability": -0.2,  # negative because higher readability should lower difficulty
+    "num_keywords": 0.05,
+}
+
+# Calculate final adjusted difficulty
+def calculate_adjusted_difficulty(model, scaler, question_text):
+    # Get model's initial prediction and features
     features = extract_features(question_text)
     X_new = pd.DataFrame([features])
     X_new_scaled = scaler.transform(X_new)
-    prediction = model.predict(X_new_scaled)
-    return prediction[0], features
+    predicted_difficulty = model.predict(X_new_scaled)[0]
+    
+    # Normalize features
+    normalized_features = {
+        "length": min(features["length"] / 100, 1),
+        "word_count": min(features["word_count"] / 20, 1),
+        "avg_word_length": min(features["avg_word_length"] / 6, 1),
+        "num_numbers": min(features["num_numbers"] / 5, 1),
+        "num_math_symbols": min(features["num_math_symbols"] / 5, 1),
+        "num_variables": min(features["num_variables"] / 5, 1),
+        "readability": 1 - (features["readability"] / 100),  # Inverted for readability
+        "num_keywords": min(features["num_keywords"] / 5, 1),
+    }
+    
+    # Calculate the adjusted difficulty based on feature impact
+    adjusted_difficulty = predicted_difficulty
+    for feature, weight in FEATURE_WEIGHTS.items():
+        adjusted_difficulty += weight * normalized_features[feature]
+    
+    return predicted_difficulty, adjusted_difficulty, features
 
-# Generate explanation based on feature insights
-# Generate explanation based on feature insights
-def generate_explanation_with_features(question_text, difficulty_score, features, model="gpt-3.5-turbo"):
+# Generate explanation and adjustment based on features
+def generate_explanation_with_feature_impact_adjustment(question_text, adjusted_difficulty, features, model="gpt-3.5-turbo"):
     client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
     
-    # Extract the feature values
-    length = features["length"]
-    word_count = features["word_count"]
-    avg_word_length = features["avg_word_length"]
-    num_numbers = features["num_numbers"]
-    num_math_symbols = features["num_math_symbols"]
-    num_variables = features["num_variables"]
-    readability = features["readability"]
-    num_keywords = features["num_keywords"]
-    
-    # Build a prompt that will guide GPT-3 to explain why the question has this level of difficulty.
+    # Construct the prompt to analyze feature impact on difficulty
     prompt = (
         f"Question: \"{question_text}\"\n"
-        f"Predicted Difficulty: {difficulty_score:.2f}\n"
-        f"Features:\n"
-        f"Length: {length} characters\n"
-        f"Word Count: {word_count} words\n"
-        f"Average Word Length: {avg_word_length:.2f} characters\n"
-        f"Number of Numbers: {num_numbers}\n"
-        f"Number of Math Symbols: {num_math_symbols}\n"
-        f"Number of Variables: {num_variables}\n"
-        f"Readability (Flesch Score): {readability:.2f}\n"
-        f"Number of Keywords: {num_keywords}\n\n"
-        f"Given these features, explain in detail why this question is considered to have a difficulty level of {difficulty_score:.2f}. "
-        f"Consider how the length of the question, word count, presence of mathematical symbols and variables, readability, and use of keywords impact the overall difficulty. "
-        f"For example, discuss how complex the mathematical content is (e.g., the number of symbols and variables), the clarity or difficulty of the language (based on readability), "
-        f"and how the length or word count might affect how challenging the question is."
+        f"Adjusted Difficulty: {adjusted_difficulty:.2f}\n"
+        f"Features: {features}\n"
+        f"Based on the following feature values (length, word_count, avg_word_length, num_numbers, "
+        f"num_math_symbols, num_variables, readability, num_keywords), explain how each feature impacts the difficulty."
+        f"Provide a final difficulty score recommendation after considering these impacts."
     )
     
     try:
@@ -94,45 +105,12 @@ def generate_explanation_with_features(question_text, difficulty_score, features
             model=model,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.7,
-            max_tokens=300,
+            max_tokens=500,
         )
-        return response.choices[0].message.content.strip()
+        explanation = response.choices[0].message.content.strip()
+        return explanation
     except Exception as e:
         return f"Explanation error: {e}"
-
-
-# Generate related questions
-def generate_custom_questions(base_question, difficulty, difficulty_type="similar", num_questions=3, model="gpt-3.5-turbo"):
-    client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-    adjustment = {
-        "similar": f"with a difficulty level of approximately {difficulty:.2f}",
-        "easier": f"that are slightly easier than difficulty {difficulty:.2f}",
-        "harder": f"that are slightly harder than difficulty {difficulty:.2f}"
-    }
-    prompt = (
-        f"Generate {num_questions} discrete math questions based on the following, {adjustment[difficulty_type]}:\n"
-        f"Question: {base_question}\n\nQuestions with brief notes explaining why each is {difficulty_type}:\n"
-    )
-    try:
-        response = client.chat.completions.create(
-            model=model,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.7,
-            max_tokens=700,
-        )
-        return response.choices[0].message.content.strip().split("\n")
-    except Exception as e:
-        return [f"Generation error: {e}"]
-
-# Generate heatmap
-def generate_feature_heatmap(questions):
-    feature_data = [extract_features(q) for q in questions]
-    labels = [q[:30] + '...' if len(q) > 30 else q for q in questions]
-    df = pd.DataFrame(feature_data, index=labels)
-    st.subheader("🔍 Feature Heatmap")
-    fig, ax = plt.subplots(figsize=(10, len(questions)*0.5 + 2))
-    sns.heatmap(df, annot=True, cmap="viridis", fmt=".2f", ax=ax)
-    st.pyplot(fig)
 
 # Main app
 def main():
@@ -143,22 +121,26 @@ def main():
     question_text = st.text_area("Enter your question:")
 
     if question_text:
-        prediction, features = predict_difficulty(model, scaler, question_text)
-        st.markdown(f"**Predicted Difficulty:** {prediction:.2f}")
+        # Calculate the final adjusted difficulty
+        _, adjusted_difficulty, features = calculate_adjusted_difficulty(model, scaler, question_text)
+        
         st.subheader("📌 Features")
         st.table(pd.DataFrame([features]))
-
-        # Generate explanation with feature insights
-        explanation = generate_explanation_with_features(question_text, prediction, features)
-        st.subheader("🧠 Explanation")
+        
+        # Generate and show explanation
+        explanation = generate_explanation_with_feature_impact_adjustment(question_text, adjusted_difficulty, features)
+        st.subheader("🧠 Explanation with Feature Impact")
         st.write(explanation)
+        st.markdown(f"**Adjusted Difficulty:** {adjusted_difficulty:.2f}")
+        
+        # Optionally show heatmap of features
         generate_feature_heatmap([question_text])
 
         st.subheader("🤖 Generate Questions")
         for diff_type in ["similar", "easier", "harder"]:
             if st.button(f"Generate {diff_type.capitalize()} Questions"):
                 with st.spinner("Generating..."):
-                    questions = generate_custom_questions(question_text, prediction, diff_type)
+                    questions = generate_custom_questions(question_text, adjusted_difficulty, diff_type)
                 st.success(f"{diff_type.capitalize()} Questions:")
                 for q in questions:
                     st.markdown(f"- {q}")
@@ -171,73 +153,23 @@ def main():
         df = pd.read_csv(uploaded_file)
         st.write("Preview:", df.head())
 
-        # Iterate through each question in the CSV and provide interactive elements
-        for idx, row in df.iterrows():
-            question_text = row[0]
-            st.subheader(f"Question {idx+1}: {question_text}")
+        predictions = []
+        adjusted_difficulties = []
+        explanations = []
+        
+        for q in df.iloc[:, 0]:
+            _, adjusted_difficulty, features = calculate_adjusted_difficulty(model, scaler, q)
+            explanation = generate_explanation_with_feature_impact_adjustment(q, adjusted_difficulty, features)
+            
+            predictions.append("N/A")  # No need for original prediction anymore
+            adjusted_difficulties.append(adjusted_difficulty)
+            explanations.append(explanation)
+        
+        # Add results to the DataFrame
+        df['Adjusted Difficulty'] = adjusted_difficulties
+        df['Explanation'] = explanations
 
-            prediction, features = predict_difficulty(model, scaler, question_text)
-            st.markdown(f"**Predicted Difficulty:** {prediction:.2f}")
-            st.subheader("📌 Features")
-            st.table(pd.DataFrame([features]))
-
-            # Generate explanation with feature insights
-            explanation = generate_explanation_with_features(question_text, prediction, features)
-            st.subheader("🧠 Explanation")
-            st.write(explanation)
-
-            generate_feature_heatmap([question_text])
-
-            st.subheader("🤖 Generate Related Questions")
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                if st.button(f"Generate Similar Questions for Question {idx+1}"):
-                    with st.spinner("Generating..."):
-                        similar_qs = generate_custom_questions(question_text, prediction, "similar")
-                    st.success(f"Similar Questions:")
-                    for q in similar_qs:
-                        st.markdown(f"- {q}")
-            with col2:
-                if st.button(f"Generate Easier Questions for Question {idx+1}"):
-                    with st.spinner("Generating..."):
-                        easier_qs = generate_custom_questions(question_text, prediction, "easier")
-                    st.success(f"Easier Questions:")
-                    for q in easier_qs:
-                        st.markdown(f"- {q}")
-            with col3:
-                if st.button(f"Generate Harder Questions for Question {idx+1}"):
-                    with st.spinner("Generating..."):
-                        harder_qs = generate_custom_questions(question_text, prediction, "harder")
-                    st.success(f"Harder Questions:")
-                    for q in harder_qs:
-                        st.markdown(f"- {q}")
-
-        st.divider()
-        # Export processed data with explanations and related questions
-        results = []
-        for idx, row in df.iterrows():
-            question_text = row[0]
-            pred, features = predict_difficulty(model, scaler, question_text)
-            explanation = generate_explanation_with_features(question_text, pred, features)
-
-            similar_qs = generate_custom_questions(question_text, pred, "similar")
-            easier_qs = generate_custom_questions(question_text, pred, "easier")
-            harder_qs = generate_custom_questions(question_text, pred, "harder")
-
-            results.append({
-                "Question": question_text,
-                "Predicted Difficulty": round(pred, 2),
-                "Features": json.dumps(features),
-                "Explanation": explanation,
-                "Similar Questions": " | ".join(similar_qs),
-                "Easier Questions": " | ".join(easier_qs),
-                "Harder Questions": " | ".join(harder_qs),
-            })
-
-        processed_df = pd.DataFrame(results)
-        st.write("📋 Processed Data with Features and Explanations")
-        st.dataframe(processed_df)
-        st.download_button("📥 Download Processed CSV", processed_df.to_csv(index=False), "processed_questions.csv")
-
-if __name__ == '__main__':
-    main()
+        st.write("Processed Data:", df)
+        generate_feature_heatmap(df.iloc[:, 0].tolist())
+        
+        st.download_button("📥 Download Processed CSV", df.to_csv(index=False), "processed_questions.csv")
