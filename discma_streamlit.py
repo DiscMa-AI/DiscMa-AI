@@ -321,7 +321,7 @@ NOTE: Since each question for the table is treated individually, it is advisable
                 st.warning(f"❌ Error processing question: {e}")
     
     # Generate feature heatmap
-    s
+    
     st.subheader("📊 Feature Heatmap of Questions")
     if st.button("Generate Feature Heatmap"):
         if uploaded_file:
