@@ -16,7 +16,7 @@ def load_model_and_scaler():
     scaler = joblib.load('model/scaler1.pkl')
     return model, scaler
 
-# Feature extraction from a question
+# Feature extraction
 def extract_features(question_text):
     features = {
         "length": 0,
@@ -47,7 +47,7 @@ def extract_features(question_text):
 
     return features
 
-# Feature Weights
+# Feature weights
 FEATURE_WEIGHTS = {
     "length": 0.4,
     "word_count": 0.3,
@@ -59,7 +59,7 @@ FEATURE_WEIGHTS = {
     "num_keywords": 0.2,
 }
 
-# Adjusted difficulty calculation
+# Adjusted difficulty score
 def calculate_adjusted_difficulty(model, scaler, question_text):
     features = extract_features(question_text)
     X_new = pd.DataFrame([features])
@@ -84,7 +84,7 @@ def calculate_adjusted_difficulty(model, scaler, question_text):
     adjusted_difficulty = max(0, min(10, adjusted_difficulty))
     return predicted_difficulty, adjusted_difficulty, features
 
-# Explanation generation via GPT
+# GPT explanation
 def generate_explanation_with_feature_impact_adjustment(question_text, adjusted_difficulty, features, model="gpt-3.5-turbo"):
     client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
     prompt = (
@@ -140,7 +140,7 @@ def generate_feature_heatmap(questions):
     sns.heatmap(df, annot=True, cmap="viridis", fmt=".2f", ax=ax)
     st.pyplot(fig)
 
-# Main application
+# Main app
 def main():
     st.set_page_config(page_title="Discrete Math Difficulty Predictor", layout="wide")
     st.title("📊 Discrete Math Question Difficulty Predictor")
@@ -155,62 +155,39 @@ def main():
 
     #### 📋 CSV Upload
     - Upload a **CSV file** containing only **one column** of discrete math questions.
-    - Sample format:
-
-        | Question |
-        |----------|
-        | What is the next term in the sequence 2, 4, 6, 8? |
-        | Find the sum of the first 10 terms of the series 3 + 6 + 9 + ... |
-        | Is the following sequence arithmetic or geometric: 1, 2, 4, 8, 16? |
-
-    - Files with multiple columns or empty/malformed rows will be rejected.
     """)
 
     model, scaler = load_model_and_scaler()
 
-    # Manual Input Section
     st.subheader("🔤 Manual Input")
     question_text = st.text_area("Enter your discrete math question:")
 
     if question_text:
-        cleaned_input = question_text.strip()
-        if not cleaned_input:
-            st.warning("⚠️ Please enter a non-empty question.")
-            return
-
+        cleaned_q = question_text.strip()
         keywords = ["sequence", "term", "sum", "summation", "series", "pattern", "next", "following", "arithmetic", "geometric"]
-        if not any(kw in cleaned_input.lower() for kw in keywords):
-            st.warning("⚠️ This question does not appear to be related to sequences or summations.")
-            return
 
-        if len(cleaned_input.split()) < 4:
-            st.warning("⚠️ The question seems too short or ambiguous. Please enter a full question.")
-            return
+        if len(cleaned_q.split()) < 4:
+            st.error("❌ The question is too short or malformed.")
+        elif not any(kw in cleaned_q.lower() for kw in keywords):
+            st.error("❌ Question is not about sequences or summations.")
+        else:
+            _, adjusted_difficulty, features = calculate_adjusted_difficulty(model, scaler, cleaned_q)
+            explanation = generate_explanation_with_feature_impact_adjustment(cleaned_q, adjusted_difficulty, features)
 
-        _, adjusted_difficulty, features = calculate_adjusted_difficulty(model, scaler, cleaned_input)
+            st.markdown(f"**Adjusted Difficulty:** {adjusted_difficulty:.2f}")
+            st.markdown("**🧠 Explanation:**")
+            st.write(explanation)
 
-        st.subheader("📌 Feature Analysis")
-        st.table(pd.DataFrame([features]))
-
-        explanation = generate_explanation_with_feature_impact_adjustment(cleaned_input, adjusted_difficulty, features)
-        st.subheader("🧠 Explanation with Feature Impact")
-        st.write(explanation)
-        st.markdown(f"**📈 Adjusted Difficulty:** {adjusted_difficulty:.2f}")
-
-        generate_feature_heatmap([cleaned_input])
-
-        st.subheader("🤖 Generate Related Questions")
-        for diff_type in ["similar", "easier", "harder"]:
-            if st.button(f"Generate {diff_type.capitalize()} Questions"):
-                with st.spinner("Generating..."):
-                    questions = generate_custom_questions(cleaned_input, adjusted_difficulty, diff_type)
-                st.success(f"{diff_type.capitalize()} Questions:")
-                for q in questions:
-                    st.markdown(f"- {q}")
+            st.markdown("**🤖 Generated Questions:**")
+            for diff_type in ["similar", "easier", "harder"]:
+                with st.spinner(f"Generating {diff_type} questions..."):
+                    gen_questions = generate_custom_questions(cleaned_q, adjusted_difficulty, diff_type)
+                st.markdown(f"**{diff_type.capitalize()} Questions:**")
+                for gq in gen_questions:
+                    st.markdown(f"- {gq}")
 
     st.divider()
 
-    # CSV Upload Section
     st.subheader("📁 Upload CSV")
     uploaded_file = st.file_uploader("Upload a CSV of discrete math questions", type=["csv"])
 
@@ -219,83 +196,42 @@ def main():
         st.write("📄 Preview of Uploaded File:")
         st.dataframe(df.head())
 
-        results = []
-keywords = ["sequence", "term", "sum", "summation", "series", "pattern", "next", "following", "arithmetic", "geometric"]
+        keywords = ["sequence", "term", "sum", "summation", "series", "pattern", "next", "following", "arithmetic", "geometric"]
 
-for q in df.iloc[:, 0]:
-    if not isinstance(q, str) or not q.strip():
-        results.append({
-            "Question": q,
-            "Adjusted Difficulty": "Invalid",
-            "Explanation": "❌ Empty or non-text input.",
-            "Similar Questions": "",
-            "Easier Questions": "",
-            "Harder Questions": ""
-        })
-        continue
+        for q in df.iloc[:, 0]:
+            st.markdown("---")
+            st.markdown(f"### 📌 Question: {q}")
+            if not isinstance(q, str) or not q.strip():
+                st.warning("❌ Empty or non-text input.")
+                continue
 
-    cleaned_q = q.strip()
-    if len(cleaned_q.split()) < 4:
-        results.append({
-            "Question": q,
-            "Adjusted Difficulty": "Too short",
-            "Explanation": "❌ Too short or malformed question.",
-            "Similar Questions": "",
-            "Easier Questions": "",
-            "Harder Questions": ""
-        })
-        continue
+            cleaned_q = q.strip()
+            if len(cleaned_q.split()) < 4:
+                st.warning("❌ Too short or malformed question.")
+                continue
 
-    if not any(kw in cleaned_q.lower() for kw in keywords):
-        results.append({
-            "Question": q,
-            "Adjusted Difficulty": "Out of scope",
-            "Explanation": "❌ Question is not about sequences or summations.",
-            "Similar Questions": "",
-            "Easier Questions": "",
-            "Harder Questions": ""
-        })
-        continue
+            if not any(kw in cleaned_q.lower() for kw in keywords):
+                st.warning("❌ Question is not about sequences or summations.")
+                continue
 
-    try:
-        _, adjusted_difficulty, features = calculate_adjusted_difficulty(model, scaler, cleaned_q)
-        explanation = generate_explanation_with_feature_impact_adjustment(cleaned_q, adjusted_difficulty, features)
+            try:
+                _, adjusted_difficulty, features = calculate_adjusted_difficulty(model, scaler, cleaned_q)
+                explanation = generate_explanation_with_feature_impact_adjustment(cleaned_q, adjusted_difficulty, features)
 
-        similar_qs = generate_custom_questions(cleaned_q, adjusted_difficulty, "similar", num_questions=2)
-        easier_qs = generate_custom_questions(cleaned_q, adjusted_difficulty, "easier", num_questions=2)
-        harder_qs = generate_custom_questions(cleaned_q, adjusted_difficulty, "harder", num_questions=2)
+                st.markdown(f"**Adjusted Difficulty:** {adjusted_difficulty:.2f}")
+                st.markdown("**🧠 Explanation:**")
+                st.write(explanation)
 
-        results.append({
-            "Question": q,
-            "Adjusted Difficulty": round(adjusted_difficulty, 2),
-            "Explanation": explanation,
-            "Similar Questions": " | ".join(similar_qs),
-            "Easier Questions": " | ".join(easier_qs),
-            "Harder Questions": " | ".join(harder_qs)
-        })
+                st.markdown("**🤖 Generated Questions:**")
+                for diff_type in ["similar", "easier", "harder"]:
+                    with st.spinner(f"Generating {diff_type} questions..."):
+                        gen_questions = generate_custom_questions(cleaned_q, adjusted_difficulty, diff_type)
+                    st.markdown(f"**{diff_type.capitalize()} Questions:**")
+                    for gq in gen_questions:
+                        st.markdown(f"- {gq}")
+            except Exception as e:
+                st.error(f"Processing error: {e}")
 
-    except Exception as e:
-        results.append({
-            "Question": q,
-            "Adjusted Difficulty": "Error",
-            "Explanation": f"❌ Processing error: {e}",
-            "Similar Questions": "",
-            "Easier Questions": "",
-            "Harder Questions": ""
-        })
-
-# Display all results
-result_df = pd.DataFrame(results)
-st.dataframe(result_df)
-        processed_df = pd.DataFrame(results)
-        st.write("✅ Processed Results:")
-        st.dataframe(processed_df)
-
-        valid_questions = [row["Question"] for row in results if isinstance(row["Adjusted Difficulty"], (int, float))]
-        if valid_questions:
-            generate_feature_heatmap(valid_questions)
-
-        st.download_button("📥 Download Processed CSV", processed_df.to_csv(index=False), "processed_questions.csv")
-
-if __name__ == '__main__':
+# Run the app
+if __name__ == "__main__":
     main()
