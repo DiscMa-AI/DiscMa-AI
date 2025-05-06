@@ -145,18 +145,60 @@ def main():
         df = pd.read_csv(uploaded_file)
         st.write("Preview:", df.head())
 
-        results = []
-        for q in df.iloc[:, 0]:
-            pred, features = predict_difficulty(model, scaler, q)
-            explanation = generate_explanation(q, pred, features)
+        # Iterate through each question in the CSV and provide interactive elements
+        for idx, row in df.iterrows():
+            question_text = row[0]
+            st.subheader(f"Question {idx+1}: {question_text}")
 
-            # Generate related questions for each question in the CSV
-            similar_qs = generate_custom_questions(q, pred, "similar")
-            easier_qs = generate_custom_questions(q, pred, "easier")
-            harder_qs = generate_custom_questions(q, pred, "harder")
+            prediction, features = predict_difficulty(model, scaler, question_text)
+            st.markdown(f"**Predicted Difficulty:** {prediction:.2f}")
+            st.subheader("📌 Features")
+            st.table(pd.DataFrame([features]))
+
+            explanation = generate_explanation(question_text, prediction, features)
+            st.subheader("🧠 Explanation")
+            st.write(explanation)
+
+            generate_feature_heatmap([question_text])
+
+            st.subheader("🤖 Generate Related Questions")
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                if st.button(f"Generate Similar Questions for Question {idx+1}"):
+                    with st.spinner("Generating..."):
+                        similar_qs = generate_custom_questions(question_text, prediction, "similar")
+                    st.success(f"Similar Questions:")
+                    for q in similar_qs:
+                        st.markdown(f"- {q}")
+            with col2:
+                if st.button(f"Generate Easier Questions for Question {idx+1}"):
+                    with st.spinner("Generating..."):
+                        easier_qs = generate_custom_questions(question_text, prediction, "easier")
+                    st.success(f"Easier Questions:")
+                    for q in easier_qs:
+                        st.markdown(f"- {q}")
+            with col3:
+                if st.button(f"Generate Harder Questions for Question {idx+1}"):
+                    with st.spinner("Generating..."):
+                        harder_qs = generate_custom_questions(question_text, prediction, "harder")
+                    st.success(f"Harder Questions:")
+                    for q in harder_qs:
+                        st.markdown(f"- {q}")
+
+        st.divider()
+        # Export processed data with explanations and related questions
+        results = []
+        for idx, row in df.iterrows():
+            question_text = row[0]
+            pred, features = predict_difficulty(model, scaler, question_text)
+            explanation = generate_explanation(question_text, pred, features)
+
+            similar_qs = generate_custom_questions(question_text, pred, "similar")
+            easier_qs = generate_custom_questions(question_text, pred, "easier")
+            harder_qs = generate_custom_questions(question_text, pred, "harder")
 
             results.append({
-                "Question": q,
+                "Question": question_text,
                 "Predicted Difficulty": round(pred, 2),
                 "Features": json.dumps(features),
                 "Explanation": explanation,
@@ -168,7 +210,6 @@ def main():
         processed_df = pd.DataFrame(results)
         st.write("📋 Processed Data with Features and Explanations")
         st.dataframe(processed_df)
-        generate_feature_heatmap(processed_df["Question"].tolist())
         st.download_button("📥 Download Processed CSV", processed_df.to_csv(index=False), "processed_questions.csv")
 
 if __name__ == '__main__':
