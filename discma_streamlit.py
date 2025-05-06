@@ -178,11 +178,16 @@ def main():
             st.markdown("**🧠 Explanation:**")
             st.write(explanation)
 
-            st.markdown("**🤖 Generated Questions:**")
-            for diff_type in ["similar", "easier", "harder"]:
-                with st.spinner(f"Generating {diff_type} questions..."):
-                    gen_questions = generate_custom_questions(cleaned_q, adjusted_difficulty, diff_type)
-                st.markdown(f"**{diff_type.capitalize()} Questions:**")
+            st.markdown("**🤖 Select Difficulty Adjustment:**")
+            difficulty_type = st.radio(
+                "Choose how you'd like the question to change:",
+                ("Similar", "Easier", "Harder")
+            )
+
+            if st.button("Generate Question(s)"):
+                with st.spinner(f"Generating {difficulty_type.lower()} questions..."):
+                    gen_questions = generate_custom_questions(cleaned_q, adjusted_difficulty, difficulty_type.lower())
+                st.markdown(f"**{difficulty_type} Questions:**")
                 for gq in gen_questions:
                     st.markdown(f"- {gq}")
 
@@ -222,11 +227,16 @@ def main():
                 st.markdown("**🧠 Explanation:**")
                 st.write(explanation)
 
-                st.markdown("**🤖 Generated Questions:**")
-                for diff_type in ["similar", "easier", "harder"]:
-                    with st.spinner(f"Generating {diff_type} questions..."):
-                        gen_questions = generate_custom_questions(cleaned_q, adjusted_difficulty, diff_type)
-                    st.markdown(f"**{diff_type.capitalize()} Questions:**")
+                st.markdown("**🤖 Select Difficulty Adjustment:**")
+                difficulty_type = st.radio(
+                    "Choose how you'd like the question to change:",
+                    ("Similar", "Easier", "Harder")
+                )
+
+                if st.button(f"Generate {difficulty_type.lower()} Question(s)"):
+                    with st.spinner(f"Generating {difficulty_type.lower()} questions..."):
+                        gen_questions = generate_custom_questions(cleaned_q, adjusted_difficulty, difficulty_type.lower())
+                    st.markdown(f"**{difficulty_type} Questions:**")
                     for gq in gen_questions:
                         st.markdown(f"- {gq}")
             except Exception as e:
