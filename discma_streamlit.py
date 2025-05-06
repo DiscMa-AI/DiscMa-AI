@@ -9,27 +9,6 @@ import matplotlib.pyplot as plt
 import openai
 import textstat
 
-st.markdown("""
-### 📌 Instructions for Use
-
-**Manual Input:**
-- Please enter a single discrete math question focused on **sequences and summations**.
-- Topics supported: arithmetic sequences, geometric series, patterns, finding the next term, summation notation.
-- If the question is **empty**, **malformed**, or **outside scope** (e.g., about calculus, logic, or set theory), it will not be processed and a warning will appear.
-
- ### 📋 CSV Format Instructions
-    Please upload a CSV file with **one column** containing discrete math questions.  
-    The column header can be anything, but the file should look like this:
-
-    | Question |
-    |----------|
-    | What is the next term in the sequence 2, 4, 6, 8? |
-    | Find the sum of the first 10 terms of the series 3 + 6 + 9 + ... |
-    | Is the following sequence arithmetic or geometric: 1, 2, 4, 8, 16? |
-
-    ❗ If your file does not match this format (e.g., has multiple columns or empty rows), it will not be processed.
-""")
-
 # Load model and scaler
 @st.cache_resource
 def load_model_and_scaler():
@@ -37,7 +16,7 @@ def load_model_and_scaler():
     scaler = joblib.load('model/scaler1.pkl')
     return model, scaler
 
-# Extract features from question
+# Feature extraction from a question
 def extract_features(question_text):
     features = {
         "length": 0,
@@ -68,7 +47,7 @@ def extract_features(question_text):
 
     return features
 
-# Feature Weights for Difficulty Adjustment
+# Feature Weights
 FEATURE_WEIGHTS = {
     "length": 0.4,
     "word_count": 0.3,
@@ -80,7 +59,7 @@ FEATURE_WEIGHTS = {
     "num_keywords": 0.2,
 }
 
-# Calculate final adjusted difficulty
+# Adjusted difficulty calculation
 def calculate_adjusted_difficulty(model, scaler, question_text):
     features = extract_features(question_text)
     X_new = pd.DataFrame([features])
@@ -105,6 +84,7 @@ def calculate_adjusted_difficulty(model, scaler, question_text):
     adjusted_difficulty = max(0, min(10, adjusted_difficulty))
     return predicted_difficulty, adjusted_difficulty, features
 
+# Explanation generation via GPT
 def generate_explanation_with_feature_impact_adjustment(question_text, adjusted_difficulty, features, model="gpt-3.5-turbo"):
     client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
     prompt = (
@@ -112,7 +92,7 @@ def generate_explanation_with_feature_impact_adjustment(question_text, adjusted_
         f"Adjusted Difficulty: {adjusted_difficulty:.2f}\n"
         f"Features: {features}\n"
         f"Based on the following feature values (length, word_count, avg_word_length, num_numbers, "
-        f"num_math_symbols, num_variables, readability, num_keywords), explain how each feature impacts the difficulty."
+        f"num_math_symbols, num_variables, readability, num_keywords), explain how each feature impacts the difficulty. "
         f"Provide a final difficulty score recommendation after considering these impacts."
     )
 
@@ -127,6 +107,7 @@ def generate_explanation_with_feature_impact_adjustment(question_text, adjusted_
     except Exception as e:
         return f"Explanation error: {e}"
 
+# Question generation
 def generate_custom_questions(base_question, difficulty, difficulty_type="similar", num_questions=3, model="gpt-3.5-turbo"):
     client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
     adjustment = {
@@ -149,21 +130,47 @@ def generate_custom_questions(base_question, difficulty, difficulty_type="simila
     except Exception as e:
         return [f"Generation error: {e}"]
 
+# Feature heatmap
 def generate_feature_heatmap(questions):
     feature_data = [extract_features(q) for q in questions]
     labels = [q[:30] + '...' if len(q) > 30 else q for q in questions]
     df = pd.DataFrame(feature_data, index=labels)
     st.subheader("🔍 Feature Heatmap")
-    fig, ax = plt.subplots(figsize=(10, len(questions)*0.5 + 2))
+    fig, ax = plt.subplots(figsize=(10, len(questions) * 0.5 + 2))
     sns.heatmap(df, annot=True, cmap="viridis", fmt=".2f", ax=ax)
     st.pyplot(fig)
 
+# Main application
 def main():
+    st.set_page_config(page_title="Discrete Math Difficulty Predictor", layout="wide")
     st.title("📊 Discrete Math Question Difficulty Predictor")
+
+    st.markdown("""
+    ### 📌 Instructions for Use
+
+    #### Manual Input
+    - Enter a **single discrete math question** focused on **sequences and summations**.
+    - Supported topics: arithmetic sequences, geometric series, patterns, summation notation, and next-term prediction.
+    - Questions outside this scope (e.g., on calculus, logic, or set theory) will be flagged.
+
+    #### 📋 CSV Upload
+    - Upload a **CSV file** containing only **one column** of discrete math questions.
+    - Sample format:
+
+        | Question |
+        |----------|
+        | What is the next term in the sequence 2, 4, 6, 8? |
+        | Find the sum of the first 10 terms of the series 3 + 6 + 9 + ... |
+        | Is the following sequence arithmetic or geometric: 1, 2, 4, 8, 16? |
+
+    - Files with multiple columns or empty/malformed rows will be rejected.
+    """)
+
     model, scaler = load_model_and_scaler()
 
-    st.subheader("🔤 Enter a Question")
-    question_text = st.text_area("Enter your question:")
+    # Manual Input Section
+    st.subheader("🔤 Manual Input")
+    question_text = st.text_area("Enter your discrete math question:")
 
     if question_text:
         cleaned_input = question_text.strip()
@@ -182,17 +189,17 @@ def main():
 
         _, adjusted_difficulty, features = calculate_adjusted_difficulty(model, scaler, cleaned_input)
 
-        st.subheader("📌 Features")
+        st.subheader("📌 Feature Analysis")
         st.table(pd.DataFrame([features]))
 
         explanation = generate_explanation_with_feature_impact_adjustment(cleaned_input, adjusted_difficulty, features)
         st.subheader("🧠 Explanation with Feature Impact")
         st.write(explanation)
-        st.markdown(f"**Adjusted Difficulty:** {adjusted_difficulty:.2f}")
+        st.markdown(f"**📈 Adjusted Difficulty:** `{adjusted_difficulty:.2f}`")
 
         generate_feature_heatmap([cleaned_input])
 
-        st.subheader("🤖 Generate Questions")
+        st.subheader("🤖 Generate Related Questions")
         for diff_type in ["similar", "easier", "harder"]:
             if st.button(f"Generate {diff_type.capitalize()} Questions"):
                 with st.spinner("Generating..."):
@@ -202,12 +209,15 @@ def main():
                     st.markdown(f"- {q}")
 
     st.divider()
+
+    # CSV Upload Section
     st.subheader("📁 Upload CSV")
-    uploaded_file = st.file_uploader("Upload a CSV of questions", type=["csv"])
+    uploaded_file = st.file_uploader("Upload a CSV of discrete math questions", type=["csv"])
 
     if uploaded_file:
         df = pd.read_csv(uploaded_file)
-        st.write("Preview:", df.head())
+        st.write("📄 Preview of Uploaded File:")
+        st.dataframe(df.head())
 
         results = []
         keywords = ["sequence", "term", "sum", "summation", "series", "pattern", "next", "following", "arithmetic", "geometric"]
@@ -238,7 +248,7 @@ def main():
                 results.append({"Question": q, "Adjusted Difficulty": "Error", "Explanation": f"❌ Processing error: {e}"})
 
         processed_df = pd.DataFrame(results)
-        st.write("Processed Data with Explanations:")
+        st.write("✅ Processed Results:")
         st.dataframe(processed_df)
 
         valid_questions = [row["Question"] for row in results if isinstance(row["Adjusted Difficulty"], (int, float))]
