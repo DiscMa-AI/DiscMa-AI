@@ -110,6 +110,7 @@ def generate_feature_heatmap(questions):
     st.pyplot(fig)
 
 # Main app
+# Main app
 def main():
     st.title("📊 Discrete Math Question Difficulty Predictor")
     model, scaler = load_model_and_scaler()
@@ -123,7 +124,8 @@ def main():
         st.subheader("📌 Features")
         st.table(pd.DataFrame([features]))
 
-        explanation = generate_explanation(question_text, prediction, features)
+        # Generate explanation with feature insights
+        explanation = generate_explanation_with_features(question_text, prediction, features)
         st.subheader("🧠 Explanation")
         st.write(explanation)
         generate_feature_heatmap([question_text])
@@ -155,7 +157,8 @@ def main():
             st.subheader("📌 Features")
             st.table(pd.DataFrame([features]))
 
-            explanation = generate_explanation(question_text, prediction, features)
+            # Generate explanation with feature insights
+            explanation = generate_explanation_with_features(question_text, prediction, features)
             st.subheader("🧠 Explanation")
             st.write(explanation)
 
@@ -191,7 +194,7 @@ def main():
         for idx, row in df.iterrows():
             question_text = row[0]
             pred, features = predict_difficulty(model, scaler, question_text)
-            explanation = generate_explanation(question_text, pred, features)
+            explanation = generate_explanation_with_features(question_text, pred, features)
 
             similar_qs = generate_custom_questions(question_text, pred, "similar")
             easier_qs = generate_custom_questions(question_text, pred, "easier")
@@ -214,3 +217,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
