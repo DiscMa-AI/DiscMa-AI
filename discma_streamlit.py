@@ -149,11 +149,20 @@ def main():
         for q in df.iloc[:, 0]:
             pred, features = predict_difficulty(model, scaler, q)
             explanation = generate_explanation(q, pred, features)
+
+            # Generate related questions for each question in the CSV
+            similar_qs = generate_custom_questions(q, pred, "similar")
+            easier_qs = generate_custom_questions(q, pred, "easier")
+            harder_qs = generate_custom_questions(q, pred, "harder")
+
             results.append({
                 "Question": q,
                 "Predicted Difficulty": round(pred, 2),
                 "Features": json.dumps(features),
-                "Explanation": explanation
+                "Explanation": explanation,
+                "Similar Questions": " | ".join(similar_qs),
+                "Easier Questions": " | ".join(easier_qs),
+                "Harder Questions": " | ".join(harder_qs),
             })
 
         processed_df = pd.DataFrame(results)
