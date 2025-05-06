@@ -16,7 +16,7 @@ def load_model_and_scaler():
     scaler = joblib.load('model/scaler1.pkl')
     return model, scaler
 
-# Extract features
+# Extract features from question
 def extract_features(question_text):
     features = {
         "length": 0,
@@ -49,14 +49,14 @@ def extract_features(question_text):
 
 # Feature Weights for Difficulty Adjustment
 FEATURE_WEIGHTS = {
-    "length": 0.25,
-    "word_count": 0.15,
-    "avg_word_length": 0.1,
-    "num_numbers": 0.15,
-    "num_math_symbols": 0.3,
-    "num_variables": 0.2,
-    "readability": -0.3,  # higher readability lowers difficulty
-    "num_keywords": 0.1,
+    "length": 0.4,
+    "word_count": 0.3,
+    "avg_word_length": 0.25,
+    "num_numbers": 0.4,
+    "num_math_symbols": 0.5,
+    "num_variables": 0.3,
+    "readability": -0.4,  # higher readability lowers difficulty
+    "num_keywords": 0.2,
 }
 
 # Calculate final adjusted difficulty
@@ -138,7 +138,7 @@ def generate_custom_questions(base_question, difficulty, difficulty_type="simila
     except Exception as e:
         return [f"Generation error: {e}"]
 
-# Generate heatmap
+# Generate heatmap for features
 def generate_feature_heatmap(questions):
     feature_data = [extract_features(q) for q in questions]
     labels = [q[:30] + '...' if len(q) > 30 else q for q in questions]
