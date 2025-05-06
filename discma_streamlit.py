@@ -182,7 +182,7 @@ def main():
             difficulty_type = st.radio(
                 "Choose how you'd like the question to change:",
                 ("Similar", "Easier", "Harder"),
-                key="difficulty_radio_input"  # Added a unique key here
+                key=f"difficulty_radio_input_manual_{cleaned_q[:10]}"  # Added unique key for manual input questions
             )
 
             if st.button("Generate Question(s)"):
@@ -232,7 +232,7 @@ def main():
                 difficulty_type = st.radio(
                     "Choose how you'd like the question to change:",
                     ("Similar", "Easier", "Harder"),
-                    key=f"difficulty_radio_input_{q[:5]}"  # Unique key based on question content
+                    key=f"difficulty_radio_input_csv_{q[:10]}"  # Unique key for CSV questions
                 )
 
                 if st.button(f"Generate {difficulty_type.lower()} Question(s)"):
@@ -244,6 +244,6 @@ def main():
             except Exception as e:
                 st.error(f"Processing error: {e}")
 
-# Run the app
+# Run app
 if __name__ == "__main__":
     main()
