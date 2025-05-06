@@ -152,7 +152,38 @@ def main():
         df['Predicted Difficulty'] = predictions
         st.write("Processed Data:", df)
         generate_feature_heatmap(df.iloc[:, 0].tolist())
-        st.download_button("📥 Download Processed CSV", df.to_csv(index=False), "processed_questions.csv")
+        st.download_button("📥 Download Processed CSV", df.to_csv(index=False), "processed_questions.csv")    if uploaded_file:
+        df = pd.read_csv(uploaded_file)
+        st.write("Preview:", df.head())
+
+        results = []
+        for q in df.iloc[:, 0]:
+            pred, features = predict_difficulty(model, scaler, q)
+            explanation = generate_explanation(q, pred, features)
+
+            # Optional: You can uncomment these if you want to generate questions
+            # sim_qs = generate_custom_questions(q, pred, "similar")
+            # easier_qs = generate_custom_questions(q, pred, "easier")
+            # harder_qs = generate_custom_questions(q, pred, "harder")
+
+            results.append({
+                "Question": q,
+                "Predicted Difficulty": round(pred, 2),
+                "Features": json.dumps(features),
+                "Explanation": explanation,
+                # "Similar Questions": " | ".join(sim_qs),
+                # "Easier Questions": " | ".join(easier_qs),
+                # "Harder Questions": " | ".join(harder_qs),
+            })
+
+        processed_df = pd.DataFrame(results)
+        st.write("Processed Data with Explanations and Features:")
+        st.dataframe(processed_df)
+
+        generate_feature_heatmap(processed_df["Question"].tolist())
+
+        st.download_button("📥 Download Processed CSV", processed_df.to_csv(index=False), "processed_questions.csv")
+
 
 if __name__ == '__main__':
     main()
