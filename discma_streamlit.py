@@ -178,19 +178,31 @@ def main():
             st.markdown("**🧠 Explanation:**")
             st.write(explanation)
 
-            st.markdown("**🤖 Select Difficulty Adjustment:**")
-            difficulty_type = st.radio(
-                "Choose how you'd like the question to change:",
-                ("Similar", "Easier", "Harder"),
-                key=f"difficulty_radio_input_manual_{cleaned_q[:10]}"  # Added unique key for manual input questions
-            )
+            col1, col2, col3 = st.columns(3)
 
-            if st.button("Generate Question(s)"):
-                with st.spinner(f"Generating {difficulty_type.lower()} questions..."):
-                    gen_questions = generate_custom_questions(cleaned_q, adjusted_difficulty, difficulty_type.lower())
-                st.markdown(f"**{difficulty_type} Questions:**")
-                for gq in gen_questions:
-                    st.markdown(f"- {gq}")
+            with col1:
+                if st.button("Generate Similar Question"):
+                    with st.spinner("Generating similar questions..."):
+                        gen_questions = generate_custom_questions(cleaned_q, adjusted_difficulty, "similar")
+                    st.markdown("**Similar Questions:**")
+                    for gq in gen_questions:
+                        st.markdown(f"- {gq}")
+
+            with col2:
+                if st.button("Generate Easier Question"):
+                    with st.spinner("Generating easier questions..."):
+                        gen_questions = generate_custom_questions(cleaned_q, adjusted_difficulty, "easier")
+                    st.markdown("**Easier Questions:**")
+                    for gq in gen_questions:
+                        st.markdown(f"- {gq}")
+
+            with col3:
+                if st.button("Generate Harder Question"):
+                    with st.spinner("Generating harder questions..."):
+                        gen_questions = generate_custom_questions(cleaned_q, adjusted_difficulty, "harder")
+                    st.markdown("**Harder Questions:**")
+                    for gq in gen_questions:
+                        st.markdown(f"- {gq}")
 
     st.divider()
 
@@ -228,21 +240,38 @@ def main():
                 st.markdown("**🧠 Explanation:**")
                 st.write(explanation)
 
-                st.markdown("**🤖 Select Difficulty Adjustment:**")
-                difficulty_type = st.radio(
-                    "Choose how you'd like the question to change:",
-                    ("Similar", "Easier", "Harder"),
-                    key=f"difficulty_radio_input_csv_{q[:10]}"  # Unique key for CSV questions
-                )
+                col1, col2, col3 = st.columns(3)
 
-                if st.button(f"Generate {difficulty_type.lower()} Question(s)"):
-                    with st.spinner(f"Generating {difficulty_type.lower()} questions..."):
-                        gen_questions = generate_custom_questions(cleaned_q, adjusted_difficulty, difficulty_type.lower())
-                    st.markdown(f"**{difficulty_type} Questions:**")
-                    for gq in gen_questions:
-                        st.markdown(f"- {gq}")
+                with col1:
+                    if st.button(f"Generate Similar Question for {cleaned_q[:10]}..."):
+                        with st.spinner("Generating similar questions..."):
+                            gen_questions = generate_custom_questions(cleaned_q, adjusted_difficulty, "similar")
+                        st.markdown("**Similar Questions:**")
+                        for gq in gen_questions:
+                            st.markdown(f"- {gq}")
+
+                with col2:
+                    if st.button(f"Generate Easier Question for {cleaned_q[:10]}..."):
+                        with st.spinner("Generating easier questions..."):
+                            gen_questions = generate_custom_questions(cleaned_q, adjusted_difficulty, "easier")
+                        st.markdown("**Easier Questions:**")
+                        for gq in gen_questions:
+                            st.markdown(f"- {gq}")
+
+                with col3:
+                    if st.button(f"Generate Harder Question for {cleaned_q[:10]}..."):
+                        with st.spinner("Generating harder questions..."):
+                            gen_questions = generate_custom_questions(cleaned_q, adjusted_difficulty, "harder")
+                        st.markdown("**Harder Questions:**")
+                        for gq in gen_questions:
+                            st.markdown(f"- {gq}")
             except Exception as e:
-                st.error(f"Processing error: {e}")
+                st.warning(f"❌ Error processing question: {e}")
+    
+    # Generate feature heatmap
+    st.subheader("📊 Feature Heatmap of Questions")
+    if st.button("Generate Feature Heatmap"):
+        generate_feature_heatmap(df.iloc[:, 0].dropna())
 
 # Run app
 if __name__ == "__main__":
