@@ -1,4 +1,3 @@
-# Enhanced Streamlit App with Advanced Features
 import pandas as pd
 import numpy as np
 import lightgbm as lgb
@@ -8,7 +7,7 @@ import streamlit as st
 import seaborn as sns
 import matplotlib.pyplot as plt
 import openai
-import textstat
+import textstat  # Required for readability metric
 import json
 
 @st.cache_resource
@@ -56,21 +55,44 @@ def predict_difficulty(model, scaler, question_text):
     prediction = model.predict(X_new_scaled)
     return prediction[0], features
 
-# Generate explanation
-def generate_explanation(question_text, difficulty_score, features, model="gpt-3.5-turbo"):
+# Generate explanation based on feature insights
+def generate_explanation_with_features(question_text, difficulty_score, features, model="gpt-3.5-turbo"):
     client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+    
+    # Extract the feature values
+    length = features["length"]
+    word_count = features["word_count"]
+    avg_word_length = features["avg_word_length"]
+    num_numbers = features["num_numbers"]
+    num_math_symbols = features["num_math_symbols"]
+    num_variables = features["num_variables"]
+    readability = features["readability"]
+    num_keywords = features["num_keywords"]
+    
+    # Build the explanation prompt including features
     prompt = (
         f"Question: \"{question_text}\"\n"
         f"Predicted Difficulty: {difficulty_score:.2f}\n"
-        f"Features: {features}\n"
-        f"Explain why this question is considered to have this difficulty level."
+        f"Features:\n"
+        f"Length: {length} characters\n"
+        f"Word Count: {word_count} words\n"
+        f"Average Word Length: {avg_word_length:.2f} characters\n"
+        f"Number of Numbers: {num_numbers}\n"
+        f"Number of Math Symbols: {num_math_symbols}\n"
+        f"Number of Variables: {num_variables}\n"
+        f"Readability (Flesch Score): {readability:.2f}\n"
+        f"Number of Keywords: {num_keywords}\n\n"
+        f"Explain why this question is considered to have this difficulty level, "
+        f"taking into account how the structure and content of the question (as reflected in the features) "
+        f"affects its perceived difficulty."
     )
+    
     try:
         response = client.chat.completions.create(
             model=model,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.7,
-            max_tokens=200,
+            max_tokens=300,
         )
         return response.choices[0].message.content.strip()
     except Exception as e:
@@ -106,10 +128,9 @@ def generate_feature_heatmap(questions):
     df = pd.DataFrame(feature_data, index=labels)
     st.subheader("🔍 Feature Heatmap")
     fig, ax = plt.subplots(figsize=(10, len(questions)*0.5 + 2))
-    sns.heatmap(df.astype(float), annot=True, cmap="viridis", fmt=".2f", ax=ax)
+    sns.heatmap(df, annot=True, cmap="viridis", fmt=".2f", ax=ax)
     st.pyplot(fig)
 
-# Main app
 # Main app
 def main():
     st.title("📊 Discrete Math Question Difficulty Predictor")
@@ -217,4 +238,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
