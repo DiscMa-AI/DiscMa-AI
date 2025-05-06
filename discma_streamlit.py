@@ -181,7 +181,8 @@ def main():
             st.markdown("**🤖 Select Difficulty Adjustment:**")
             difficulty_type = st.radio(
                 "Choose how you'd like the question to change:",
-                ("Similar", "Easier", "Harder")
+                ("Similar", "Easier", "Harder"),
+                key="difficulty_radio_input"  # Added a unique key here
             )
 
             if st.button("Generate Question(s)"):
@@ -230,7 +231,8 @@ def main():
                 st.markdown("**🤖 Select Difficulty Adjustment:**")
                 difficulty_type = st.radio(
                     "Choose how you'd like the question to change:",
-                    ("Similar", "Easier", "Harder")
+                    ("Similar", "Easier", "Harder"),
+                    key=f"difficulty_radio_input_{q[:5]}"  # Unique key based on question content
                 )
 
                 if st.button(f"Generate {difficulty_type.lower()} Question(s)"):
