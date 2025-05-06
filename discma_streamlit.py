@@ -8,18 +8,13 @@ import streamlit as st
 import seaborn as sns
 import matplotlib.pyplot as plt
 import openai
-from sklearn.metrics.pairwise import cosine_similarity
-from sklearn.preprocessing import normalize
-import json
+import textstat  # Required for readability metric
 
 @st.cache_resource
 def load_model_and_scaler():
     model = lgb.Booster(model_file='model/discma1.txt')
     scaler = joblib.load('model/scaler1.pkl')
     return model, scaler
-
-# Load embedding examples (precomputed vectors of in-scope questions)
-
 
 # Extract features
 def extract_features(question_text):
@@ -51,9 +46,6 @@ def extract_features(question_text):
     features["num_keywords"] = sum(1 for word in words if word.lower() in keywords)
 
     return features
-
-# Get OpenAI embedding
-
 
 # Predict difficulty
 def predict_difficulty(model, scaler, question_text):
@@ -117,7 +109,6 @@ def generate_feature_heatmap(questions):
     st.pyplot(fig)
 
 # Main app
-
 def main():
     st.title("📊 Discrete Math Question Difficulty Predictor")
     model, scaler = load_model_and_scaler()
@@ -144,7 +135,6 @@ def main():
                 st.success(f"{diff_type.capitalize()} Questions:")
                 for q in questions:
                     st.markdown(f"- {q}")
-        
 
     st.divider()
     st.subheader("📁 Upload CSV")
@@ -154,12 +144,12 @@ def main():
         df = pd.read_csv(uploaded_file)
         st.write("Preview:", df.head())
 
-predictions = []
-for q in df.iloc[:, 0]:
-    pred, _ = predict_difficulty(model, scaler, q)
-    predictions.append(pred)
+        predictions = []
+        for q in df.iloc[:, 0]:
+            pred, _ = predict_difficulty(model, scaler, q)
+            predictions.append(pred)
 
-df['Predicted Difficulty'] = predictions
+        df['Predicted Difficulty'] = predictions
         st.write("Processed Data:", df)
         generate_feature_heatmap(df.iloc[:, 0].tolist())
         st.download_button("📥 Download Processed CSV", df.to_csv(index=False), "processed_questions.csv")
