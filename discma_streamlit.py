@@ -47,6 +47,7 @@ def extract_features(question_text):
 
     return features
 
+# Feature Weights for Difficulty Adjustment
 FEATURE_WEIGHTS = {
     "length": 0.4,
     "word_count": 0.3,
@@ -58,6 +59,7 @@ FEATURE_WEIGHTS = {
     "num_keywords": 0.2,
 }
 
+# Calculate final adjusted difficulty
 def calculate_adjusted_difficulty(model, scaler, question_text):
     features = extract_features(question_text)
     X_new = pd.DataFrame([features])
@@ -92,6 +94,7 @@ def generate_explanation_with_feature_impact_adjustment(question_text, adjusted_
         f"num_math_symbols, num_variables, readability, num_keywords), explain how each feature impacts the difficulty."
         f"Provide a final difficulty score recommendation after considering these impacts."
     )
+
     try:
         response = client.chat.completions.create(
             model=model,
@@ -142,84 +145,86 @@ def main():
     question_text = st.text_area("Enter your question:")
 
     if question_text:
-        _, adjusted_difficulty, features = calculate_adjusted_difficulty(model, scaler, question_text)
+        cleaned_input = question_text.strip()
+        if not cleaned_input:
+            st.warning("⚠️ Please enter a non-empty question.")
+            return
+
+        keywords = ["sequence", "term", "sum", "summation", "series", "pattern", "next", "following", "arithmetic", "geometric"]
+        if not any(kw in cleaned_input.lower() for kw in keywords):
+            st.warning("⚠️ This question does not appear to be related to sequences or summations.")
+            return
+
+        if len(cleaned_input.split()) < 4:
+            st.warning("⚠️ The question seems too short or ambiguous. Please enter a full question.")
+            return
+
+        _, adjusted_difficulty, features = calculate_adjusted_difficulty(model, scaler, cleaned_input)
+
         st.subheader("📌 Features")
         st.table(pd.DataFrame([features]))
 
-        explanation = generate_explanation_with_feature_impact_adjustment(question_text, adjusted_difficulty, features)
+        explanation = generate_explanation_with_feature_impact_adjustment(cleaned_input, adjusted_difficulty, features)
         st.subheader("🧠 Explanation with Feature Impact")
         st.write(explanation)
         st.markdown(f"**Adjusted Difficulty:** {adjusted_difficulty:.2f}")
 
-        generate_feature_heatmap([question_text])
+        generate_feature_heatmap([cleaned_input])
 
         st.subheader("🤖 Generate Questions")
         for diff_type in ["similar", "easier", "harder"]:
             if st.button(f"Generate {diff_type.capitalize()} Questions"):
                 with st.spinner("Generating..."):
-                    questions = generate_custom_questions(question_text, adjusted_difficulty, diff_type)
+                    questions = generate_custom_questions(cleaned_input, adjusted_difficulty, diff_type)
                 st.success(f"{diff_type.capitalize()} Questions:")
                 for q in questions:
                     st.markdown(f"- {q}")
 
     st.divider()
-
     st.subheader("📁 Upload CSV")
-    st.markdown("""
-    ### 📋 CSV Format Instructions
-    Please upload a CSV file with **one column** containing discrete math questions.  
-    The column header can be anything, but the file should look like this:
-
-    | Question |
-    |----------|
-    | What is the next term in the sequence 2, 4, 6, 8? |
-    | Find the sum of the first 10 terms of the series 3 + 6 + 9 + ... |
-    | Is the following sequence arithmetic or geometric: 1, 2, 4, 8, 16? |
-
-    ❗ If your file does not match this format (e.g., has multiple columns or empty rows), it will not be processed.
-    """)
-
     uploaded_file = st.file_uploader("Upload a CSV of questions", type=["csv"])
 
     if uploaded_file:
         df = pd.read_csv(uploaded_file)
+        st.write("Preview:", df.head())
 
-        # Validate CSV format
-        if df.shape[1] != 1 or df.isnull().values.any():
-            st.warning("⚠️ The uploaded CSV does not match the expected format. Please ensure it has one column with valid question text.")
-        else:
-            st.write("✅ Format accepted. Preview:")
-            st.dataframe(df.head())
+        results = []
+        keywords = ["sequence", "term", "sum", "summation", "series", "pattern", "next", "following", "arithmetic", "geometric"]
 
-            results = []
-            for q in df.iloc[:, 0]:
-                _, adjusted_difficulty, features = calculate_adjusted_difficulty(model, scaler, q)
-                explanation = generate_explanation_with_feature_impact_adjustment(q, adjusted_difficulty, features)
+        for q in df.iloc[:, 0]:
+            if not isinstance(q, str) or not q.strip():
+                results.append({"Question": q, "Adjusted Difficulty": "Invalid", "Explanation": "❌ Empty or non-text input."})
+                continue
 
+            cleaned_q = q.strip()
+            if len(cleaned_q.split()) < 4:
+                results.append({"Question": q, "Adjusted Difficulty": "Too short", "Explanation": "❌ Too short or malformed question."})
+                continue
+
+            if not any(kw in cleaned_q.lower() for kw in keywords):
+                results.append({"Question": q, "Adjusted Difficulty": "Out of scope", "Explanation": "❌ Question is not about sequences or summations."})
+                continue
+
+            try:
+                _, adjusted_difficulty, features = calculate_adjusted_difficulty(model, scaler, cleaned_q)
+                explanation = generate_explanation_with_feature_impact_adjustment(cleaned_q, adjusted_difficulty, features)
                 results.append({
                     "Question": q,
                     "Adjusted Difficulty": round(adjusted_difficulty, 2),
                     "Explanation": explanation,
                 })
+            except Exception as e:
+                results.append({"Question": q, "Adjusted Difficulty": "Error", "Explanation": f"❌ Processing error: {e}"})
 
-            processed_df = pd.DataFrame(results)
-            st.write("Processed Data with Explanations:")
-            st.dataframe(processed_df)
+        processed_df = pd.DataFrame(results)
+        st.write("Processed Data with Explanations:")
+        st.dataframe(processed_df)
 
-            generate_feature_heatmap(df.iloc[:, 0].tolist())
+        valid_questions = [row["Question"] for row in results if isinstance(row["Adjusted Difficulty"], (int, float))]
+        if valid_questions:
+            generate_feature_heatmap(valid_questions)
 
-            st.subheader("🤖 Generate Questions for Each")
-            for idx, row in processed_df.iterrows():
-                with st.expander(f"Generate questions for: {row['Question']}"):
-                    for diff_type in ["similar", "easier", "harder"]:
-                        if st.button(f"Generate {diff_type.capitalize()} Questions for {row['Question']}"):
-                            with st.spinner("Generating..."):
-                                questions = generate_custom_questions(row['Question'], row['Adjusted Difficulty'], diff_type)
-                            st.success(f"{diff_type.capitalize()} Questions:")
-                            for q in questions:
-                                st.markdown(f"- {q}")
-
-            st.download_button("📥 Download Processed CSV", processed_df.to_csv(index=False), "processed_questions.csv")
+        st.download_button("📥 Download Processed CSV", processed_df.to_csv(index=False), "processed_questions.csv")
 
 if __name__ == '__main__':
     main()
