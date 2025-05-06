@@ -9,6 +9,27 @@ import matplotlib.pyplot as plt
 import openai
 import textstat
 
+st.markdown("""
+### 📌 Instructions for Use
+
+**Manual Input:**
+- Please enter a single discrete math question focused on **sequences and summations**.
+- Topics supported: arithmetic sequences, geometric series, patterns, finding the next term, summation notation.
+- If the question is **empty**, **malformed**, or **outside scope** (e.g., about calculus, logic, or set theory), it will not be processed and a warning will appear.
+
+ ### 📋 CSV Format Instructions
+    Please upload a CSV file with **one column** containing discrete math questions.  
+    The column header can be anything, but the file should look like this:
+
+    | Question |
+    |----------|
+    | What is the next term in the sequence 2, 4, 6, 8? |
+    | Find the sum of the first 10 terms of the series 3 + 6 + 9 + ... |
+    | Is the following sequence arithmetic or geometric: 1, 2, 4, 8, 16? |
+
+    ❗ If your file does not match this format (e.g., has multiple columns or empty rows), it will not be processed.
+""")
+
 # Load model and scaler
 @st.cache_resource
 def load_model_and_scaler():
