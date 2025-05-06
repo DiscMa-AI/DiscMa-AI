@@ -1,4 +1,3 @@
-# Enhanced Streamlit App with Difficulty Adjustment Based on Features
 import pandas as pd
 import numpy as np
 import lightgbm as lgb
@@ -10,6 +9,7 @@ import matplotlib.pyplot as plt
 import openai
 import textstat
 
+# Load model and scaler
 @st.cache_resource
 def load_model_and_scaler():
     model = lgb.Booster(model_file='model/discma1.txt')
@@ -49,14 +49,14 @@ def extract_features(question_text):
 
 # Feature Weights for Difficulty Adjustment
 FEATURE_WEIGHTS = {
-    "length": 0.2,
-    "word_count": 0.1,
-    "avg_word_length": 0.05,
-    "num_numbers": 0.1,
-    "num_math_symbols": 0.25,
-    "num_variables": 0.15,
-    "readability": -0.2,  # negative because higher readability should lower difficulty
-    "num_keywords": 0.05,
+    "length": 0.25,
+    "word_count": 0.15,
+    "avg_word_length": 0.1,
+    "num_numbers": 0.15,
+    "num_math_symbols": 0.3,
+    "num_variables": 0.2,
+    "readability": -0.3,  # higher readability lowers difficulty
+    "num_keywords": 0.1,
 }
 
 # Calculate final adjusted difficulty
@@ -83,6 +83,9 @@ def calculate_adjusted_difficulty(model, scaler, question_text):
     adjusted_difficulty = predicted_difficulty
     for feature, weight in FEATURE_WEIGHTS.items():
         adjusted_difficulty += weight * normalized_features[feature]
+    
+    # Make sure the difficulty is within a reasonable range
+    adjusted_difficulty = max(0, min(10, adjusted_difficulty))
     
     return predicted_difficulty, adjusted_difficulty, features
 
@@ -186,26 +189,37 @@ def main():
         df = pd.read_csv(uploaded_file)
         st.write("Preview:", df.head())
 
-        predictions = []
-        adjusted_difficulties = []
-        explanations = []
-        
+        results = []
         for q in df.iloc[:, 0]:
+            # Calculate adjusted difficulty for each question
             _, adjusted_difficulty, features = calculate_adjusted_difficulty(model, scaler, q)
             explanation = generate_explanation_with_feature_impact_adjustment(q, adjusted_difficulty, features)
-            
-            predictions.append("N/A")  # No need for original prediction anymore
-            adjusted_difficulties.append(adjusted_difficulty)
-            explanations.append(explanation)
-        
-        # Add results to the DataFrame
-        df['Adjusted Difficulty'] = adjusted_difficulties
-        df['Explanation'] = explanations
 
-        st.write("Processed Data:", df)
+            results.append({
+                "Question": q,
+                "Adjusted Difficulty": round(adjusted_difficulty, 2),
+                "Explanation": explanation,
+            })
+
+        # Add results to the DataFrame
+        processed_df = pd.DataFrame(results)
+        st.write("Processed Data with Explanations:")
+        st.dataframe(processed_df)
+
         generate_feature_heatmap(df.iloc[:, 0].tolist())
+
+        st.subheader("🤖 Generate Questions for Each")
+        for idx, row in processed_df.iterrows():
+            with st.expander(f"Generate questions for: {row['Question']}"):
+                for diff_type in ["similar", "easier", "harder"]:
+                    if st.button(f"Generate {diff_type.capitalize()} Questions for {row['Question']}"):
+                        with st.spinner("Generating..."):
+                            questions = generate_custom_questions(row['Question'], row['Adjusted Difficulty'], diff_type)
+                        st.success(f"{diff_type.capitalize()} Questions:")
+                        for q in questions:
+                            st.markdown(f"- {q}")
         
-        st.download_button("📥 Download Processed CSV", df.to_csv(index=False), "processed_questions.csv")
+        st.download_button("📥 Download Processed CSV", processed_df.to_csv(index=False), "processed_questions.csv")
 
 if __name__ == '__main__':
     main()
