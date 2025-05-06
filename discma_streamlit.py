@@ -146,16 +146,66 @@ def main():
     st.title("📊 Discrete Math Question Difficulty Predictor")
 
     st.markdown("""
-    ### 📌 Instructions for Use
+### 📌 Instructions for Use
 
-    #### Manual Input
-    - Enter a **single discrete math question** focused on **sequences and summations**.
-    - Supported topics: arithmetic sequences, geometric series, patterns, summation notation, and next-term prediction.
-    - Questions outside this scope (e.g., on calculus, logic, or set theory) will be flagged.
+#### Manual Input
+- **Input a single discrete math question** related to **sequences and summations**.
+- Supported topics include:
+  - Arithmetic sequences
+  - Geometric series
+  - Pattern identification
+  - Summation notation (Σ notation)
+  - Next-term prediction in sequences
+- The question must be clear and precise. Avoid overly general or vague questions.
 
-    #### 📋 CSV Upload
-    - Upload a **CSV file** containing only **one column** of discrete math questions.
-    """)
+#### Example of a Valid Question:
+- **"What is the 10th term in the arithmetic sequence: 3, 7, 11, 15, ...?"**
+- **"Find the sum of the first 20 terms of the geometric series: 5, 15, 45, ..."**
+
+#### Examples of Questions **NOT** Processed:
+These questions **will not be processed** because they fall outside the scope of sequences and summations:
+- **"What is the derivative of x^2?"** (calculus-related)
+- **"Solve for x in the equation 2x + 3 = 5."** (algebra-related)
+- **"What is the area of a circle with radius 7?"** (geometry-related)
+- **"Write a program to compute factorials."** (programming-related)
+- **"What is the capital of France?"** (general knowledge)
+
+#### 📋 CSV Upload
+- Upload a **CSV file** containing a column of **discrete math questions** that follow the sequences and summations theme.
+- The file should **not** contain any non-relevant questions or other types of math problems.
+
+#### Example CSV Format:
+
+| Question                                           |
+|----------------------------------------------------|
+| What is the sum of the first 10 terms in the arithmetic sequence: 2, 5, 8, 11, ...? |
+| Find the next term in the geometric sequence: 3, 6, 12, 24, ... |
+| What is the sum of the first 15 terms in the series: 10, 20, 40, ...? |
+| Identify the pattern and find the 10th term: 5, 10, 20, 40, ... |
+| What is the 8th term in the arithmetic sequence 1, 4, 7, 10, ...? |
+
+#### Notes:
+- Each row in the CSV should only contain a single question in plain text.
+- Questions that are too short, malformed, or unrelated to the sequence and summation topics will be flagged as invalid.
+- The maximum number of questions processed at once will depend on the file size and question length.
+
+#### Important:
+- **Questions that are too short** (e.g., "Find the sum of 1, 2, and 3.") or **unrelated** to sequences and summations will not be processed.
+- Ensure your CSV file contains questions relevant to discrete math and summations.
+
+### ❗ Example Invalid Questions in CSV:
+| Question                                           |
+|----------------------------------------------------|
+| What is the derivative of x^2?                     |
+| Solve for x in the equation 2x + 3 = 5.            |
+| What is the area of a circle with radius 7?        |
+| Write a program to compute factorials.             |
+| What is the capital of France?                     |
+
+These types of questions will be **ignored** by the app, as they do not pertain to sequences and summations.
+
+""")
+
 
     model, scaler = load_model_and_scaler()
 
