@@ -1,0 +1,14 @@
+{
+  "questions": [
+    "What is the 10th term of the arithmetic sequence 2, 5, 8, ...?",
+    "Find the sum of the first 20 terms of the geometric series 3, 6, 12, ...",
+    "Determine the closed form of the summation ∑(i=1 to n) i^2.",
+    "What is the nth term of the sequence defined recursively as a₁ = 2, aₙ = aₙ₋₁ + 3?"
+  ],
+  "embeddings": [
+    [0.001], "* 1536",
+    [0.002], "* 1536",
+    [0.003], "* 1536",
+    [0.004], "* 1536"
+  ]
+}
