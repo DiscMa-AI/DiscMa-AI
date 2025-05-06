@@ -321,9 +321,13 @@ NOTE: Since each question for the table is treated individually, it is advisable
                 st.warning(f"❌ Error processing question: {e}")
     
     # Generate feature heatmap
-    st.subheader("📊 Feature Heatmap of Questions")
-    if st.button("Generate Feature Heatmap"):
+    s
+st.subheader("📊 Feature Heatmap of Questions")
+if st.button("Generate Feature Heatmap"):
+    if uploaded_file:
         generate_feature_heatmap(df.iloc[:, 0].dropna())
+    else:
+        st.warning("❌ You don't have a file selected.")
 
 # Run app
 if __name__ == "__main__":
