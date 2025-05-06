@@ -105,7 +105,7 @@ def generate_feature_heatmap(questions):
     df = pd.DataFrame(feature_data, index=labels)
     st.subheader("🔍 Feature Heatmap")
     fig, ax = plt.subplots(figsize=(10, len(questions)*0.5 + 2))
-    sns.heatmap(df, annot=True, cmap="viridis", fmt="d", ax=ax)
+    sns.heatmap(df, annot=True, cmap="viridis", fmt=".2f", ax=ax)
     st.pyplot(fig)
 
 # Main app
