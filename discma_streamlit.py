@@ -1,92 +1,85 @@
 import streamlit as st
 import pandas as pd
-import re
-from model import predict_difficulty, explain_prediction, generate_question_variation
+from difficulty_model import predict_difficulty, generate_custom_questions, extract_features_from_text
 
-# Title
-st.title("📊 Question Difficulty Predictor")
-st.markdown("Use this app to predict the difficulty of math questions involving **sequences and summations** only.")
+st.set_page_config(page_title="Question Difficulty Analyzer", layout="wide")
+st.title("📊 Question Difficulty Analyzer")
 
-# Instructions
-st.markdown("""
-### ❗ Important Instructions
-- This tool only accepts **math questions** about **sequences** or **summations**.
-- Examples of **accepted** topics:
-  - What is the 10th term of the sequence 2, 4, 6, ...?
-  - What is the sum of the first 100 positive integers?
-- **Rejected** topics include:
-  - General knowledge (e.g. *What is the capital of France?*)
-  - Arithmetic operations, geometry, algebra (unless tied to sequences/summations)
+st.sidebar.title("Navigation")
+page = st.sidebar.radio("Go to", ["Manual Input", "CSV Upload"])
 
-### ✅ CSV Format Sample
-| Question                             |
-|--------------------------------------|
-| What is the 15th term of the sequence 3, 6, 9, ...? |
-| Find the sum of the first 20 even numbers.         |
+# ---------- Manual Input Section ----------
+if page == "Manual Input":
+    st.header("📝 Analyze a Question")
+    question_text = st.text_area("Enter your question:")
 
-Ensure your file is a `.csv` with a **Question** column containing only valid questions.
-""")
+    if st.button("Predict Difficulty"):
+        if question_text.strip():
+            with st.spinner("Analyzing question..."):
+                features = extract_features_from_text(question_text)
+                difficulty = predict_difficulty(features)
 
-# Utility function
-def is_valid_math_question(question: str) -> bool:
-    return bool(re.search(r'\b(sequence|term|summation|sum of|nth term)\b', question, re.IGNORECASE))
+            st.success(f"Predicted Difficulty: {difficulty:.2f}%")
 
-# File uploader
-st.header("📂 Upload CSV of Questions")
-uploaded_file = st.file_uploader("Upload your .csv file", type="csv")
+            for diff_type in ["similar", "easier", "harder"]:
+                if st.button(f"Generate {diff_type.capitalize()} Questions"):
+                    with st.spinner("Generating questions..."):
+                        questions = generate_custom_questions(question_text, difficulty, difficulty_type=diff_type)
+                    st.success(f"{diff_type.capitalize()} Questions:")
+                    for q in questions:
+                        st.markdown(f"- {q}")
+        else:
+            st.warning("Please enter a question to analyze.")
 
-if uploaded_file:
-    df = pd.read_csv(uploaded_file)
-    if 'Question' not in df.columns:
-        st.error("The CSV file must contain a 'Question' column.")
-    else:
-        valid_questions = df[df['Question'].apply(is_valid_math_question)]
-        invalid_questions = df[~df['Question'].apply(is_valid_math_question)]
+# ---------- CSV Upload Section ----------
+else:
+    st.header("📁 Batch Analyze from CSV")
+    uploaded_file = st.file_uploader("Upload a CSV file with a 'Question' column:", type="csv")
 
-        if not valid_questions.empty:
-            st.success(f"{len(valid_questions)} valid question(s) loaded.")
-            for i, row in valid_questions.iterrows():
-                question = row['Question']
-                difficulty = predict_difficulty(question)
-                explanation = explain_prediction(question)
-                st.markdown(f"**Q:** {question}")
-                st.markdown(f"**Predicted Difficulty:** {difficulty:.2f}%")
-                st.markdown(f"**Explanation:** {explanation}")
-                with st.expander("Generate Similar, Easier, or Harder Versions"):
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        if st.button(f"Similar #{i}"):
-                            st.markdown(generate_question_variation(question, "similar"))
-                    with col2:
-                        if st.button(f"Easier #{i}"):
-                            st.markdown(generate_question_variation(question, "easier"))
-                    with col3:
-                        if st.button(f"Harder #{i}"):
-                            st.markdown(generate_question_variation(question, "harder"))
-        if not invalid_questions.empty:
-            st.warning(f"{len(invalid_questions)} question(s) were skipped because they are outside the supported scope.")
-            st.dataframe(invalid_questions)
+    if uploaded_file is not None:
+        try:
+            df = pd.read_csv(uploaded_file)
+            if "Question" not in df.columns:
+                st.error("CSV must contain a 'Question' column.")
+            else:
+                st.success("CSV successfully loaded!")
 
-# Manual entry
-st.header("✍️ Manual Question Input")
-manual_question = st.text_area("Enter a math question involving sequences or summations:")
+                results = []
+                for q in df["Question"]:
+                    if isinstance(q, str) and q.strip():
+                        try:
+                            features = extract_features_from_text(q)
+                            difficulty = predict_difficulty(features)
+                            results.append({"Question": q, "Adjusted Difficulty": round(difficulty, 2)})
+                        except Exception as e:
+                            results.append({"Question": q, "Adjusted Difficulty": "Error"})
+                    else:
+                        results.append({"Question": q, "Adjusted Difficulty": "Invalid question"})
 
-if st.button("Predict Difficulty"):
-    if not is_valid_math_question(manual_question):
-        st.error("❌ This question is out of scope. Please input only questions about sequences or summations.")
-    else:
-        difficulty = predict_difficulty(manual_question)
-        explanation = explain_prediction(manual_question)
-        st.markdown(f"**Predicted Difficulty:** {difficulty:.2f}%")
-        st.markdown(f"**Explanation:** {explanation}")
-        with st.expander("Generate Similar, Easier, or Harder Versions"):
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                if st.button("Similar"):
-                    st.markdown(generate_question_variation(manual_question, "similar"))
-            with col2:
-                if st.button("Easier"):
-                    st.markdown(generate_question_variation(manual_question, "easier"))
-            with col3:
-                if st.button("Harder"):
-                    st.markdown(generate_question_variation(manual_question, "harder"))
+                result_df = pd.DataFrame(results)
+                st.dataframe(result_df)
+
+                # -- Select question from processed rows for generation --
+                st.subheader("📑 Select a Question for Generation")
+                valid_questions = [row["Question"] for row in results if isinstance(row["Adjusted Difficulty"], float)]
+
+                if valid_questions:
+                    selected_q = st.selectbox("Choose a question to generate related items:", valid_questions)
+                    selected_row = next(r for r in results if r["Question"] == selected_q)
+
+                    st.markdown(f"**Selected Question:** {selected_q}")
+                    st.markdown(f"**Adjusted Difficulty:** `{selected_row['Adjusted Difficulty']}`")
+
+                    for diff_type in ["similar", "easier", "harder"]:
+                        if st.button(f"Generate {diff_type.capitalize()} Questions for Selected"):
+                            with st.spinner("Generating..."):
+                                questions = generate_custom_questions(
+                                    selected_q,
+                                    selected_row["Adjusted Difficulty"],
+                                    difficulty_type=diff_type
+                                )
+                            st.success(f"{diff_type.capitalize()} Questions:")
+                            for q in questions:
+                                st.markdown(f"- {q}")
+        except Exception as e:
+            st.error(f"An error occurred while processing the CSV: {e}")
